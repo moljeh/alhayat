@@ -1,0 +1,380 @@
+function doPost(e) {
+  var lock = LockService.getScriptLock();
+  
+  try {
+    lock.waitLock(10000);
+
+    var ss = SpreadsheetApp.getActiveSpreadsheet();
+    var contents = JSON.parse(e.postData.contents);
+    var action = contents.action;
+
+    // ====================================================
+    // 0. SISTEM LOGIN ADMINISTRATOR
+    // ====================================================
+    if (action === "login") {
+      var sheetLogin = ss.getSheetByName("Login");
+      
+      // Buat sheet Login otomatis dengan akun default jika belum ada
+      if (!sheetLogin) {
+        sheetLogin = ss.insertSheet("Login");
+        sheetLogin.appendRow(["USERNAME", "PASSWORD"]);
+        sheetLogin.appendRow(["admin", "admin123"]); 
+      }
+      
+      var data = sheetLogin.getDataRange().getValues();
+      var inputUser = contents.username;
+      var inputPass = contents.password;
+      var isMatch = false;
+      
+      for (var i = 1; i < data.length; i++) {
+        // Cek kecocokan username dan password
+        if (data[i][0] == inputUser && data[i][1] == inputPass) {
+          isMatch = true;
+          break;
+        }
+      }
+      
+      if (isMatch) {
+        return ContentService.createTextOutput(JSON.stringify({ result: "success", message: "Login Berhasil" })).setMimeType(ContentService.MimeType.JSON);
+      } else {
+        return ContentService.createTextOutput(JSON.stringify({ result: "error", message: "Username atau Password salah!" })).setMimeType(ContentService.MimeType.JSON);
+      }
+    }
+    // ====================================================
+    // 1. SIMPAN MASTER DATA SISWA
+    // ====================================================
+    else if (action === "simpan_master") {
+      var dataSiswa = contents.data;
+      var kelasMap = {};
+      
+      for (var i = 0; i < dataSiswa.length; i++) {
+        var k = dataSiswa[i].kelas || "Tanpa Kelas";
+        if (!kelasMap[k]) kelasMap[k] = [];
+        kelasMap[k].push(dataSiswa[i]);
+      }
+
+      for (var namaKelas in kelasMap) {
+        var sheetName = namaKelas;
+        var sheet = ss.getSheetByName(sheetName);
+        if (!sheet) sheet = ss.insertSheet(sheetName);
+        
+        sheet.clearContents();
+        sheet.appendRow(["NO", "NIS", "NAMA SISWA", "KELAS", "JK"]);
+        
+        var rows = [];
+        var listSiswa = kelasMap[namaKelas];
+        for (var j = 0; j < listSiswa.length; j++) {
+          rows.push([j + 1, listSiswa[j].nis, listSiswa[j].nama, listSiswa[j].kelas, listSiswa[j].jk || "-"]);
+        }
+        
+        if (rows.length > 0) {
+          sheet.getRange(2, 1, rows.length, 5).setValues(rows);
+        }
+      }
+
+      return ContentService.createTextOutput(
+        JSON.stringify({ result: "success", message: "Master Data berhasil disimpan!" })
+      ).setMimeType(ContentService.MimeType.JSON);
+
+    } 
+    // ====================================================
+    // 2. TARIK/SEDOT MASTER DATA SISWA
+    // ====================================================
+    else if (action === "get_master") {
+      var sheets = ss.getSheets();
+      var allSiswa = [];
+
+      for (var s = 0; s < sheets.length; s++) {
+        var sheetName = sheets[s].getName();
+        
+        // Jangan ambil data dari sheet sistem (Absensi, Pengaturan, Login)
+        if (!sheetName.startsWith("Absensi_") && sheetName !== "Pengaturan" && sheetName !== "Login") {
+          var values = sheets[s].getDataRange().getValues();
+          for (var r = 1; r < values.length; r++) {
+            if (values[r][1] && values[r][2]) { 
+              allSiswa.push({
+                nis: String(values[r][1]),
+                nama: String(values[r][2]),
+                kelas: String(values[r][3] || sheetName),
+                jk: String(values[r][4] || "-")
+              });
+            }
+          }
+        }
+      }
+
+      return ContentService.createTextOutput(
+        JSON.stringify({ result: "success", data: allSiswa })
+      ).setMimeType(ContentService.MimeType.JSON);
+    }
+
+// ====================================================
+    // 3. SIMPAN ATAU UPDATE PRESENSI HARIAN (FITUR EDIT)
+    // ====================================================
+    else if (action === "simpan_absensi") {
+      var kelas = contents.kelas;
+      var tanggal = contents.tanggal;
+      var dataAbsensi = contents.data;
+      var kordinatInfo = contents.koordinat || "Tidak dilacak";
+      var timestamp = new Date();
+
+      var sheetAbsensiName = "Absensi_" + kelas;
+      var sheetAbsensi = ss.getSheetByName(sheetAbsensiName);
+      
+      if (!sheetAbsensi) {
+        sheetAbsensi = ss.insertSheet(sheetAbsensiName);
+        sheetAbsensi.appendRow(["Timestamp", "Tanggal", "Kelas", "NIS", "Nama", "Status Kehadiran", "Koordinat Lokasi"]);
+      }
+
+      var existingData = sheetAbsensi.getDataRange().getValues();
+      var isUpdate = false;
+      
+      // Deteksi apakah tanggal ini sudah pernah disubmit
+      for (var i = existingData.length - 1; i > 0; i--) { 
+        var rawTgl = existingData[i][1];
+        var tglStr = "";
+        if (rawTgl instanceof Date) {
+          var y = rawTgl.getFullYear();
+          var m = String(rawTgl.getMonth() + 1).padStart(2, '0');
+          var d = String(rawTgl.getDate()).padStart(2, '0');
+          tglStr = y + "-" + m + "-" + d;
+        } else {
+          tglStr = String(rawTgl);
+        }
+
+        if (tglStr === tanggal) {
+           isUpdate = true;
+           break; 
+        }
+      }
+
+      if (isUpdate) {
+        // --- MODE EDIT / UPDATE DATA LAMA ---
+        for (var m = 0; m < dataAbsensi.length; m++) {
+          var nisInput = String(dataAbsensi[m].nis);
+          var statusInput = dataAbsensi[m].status;
+          
+          for (var r = existingData.length - 1; r > 0; r--) {
+            var rTgl = existingData[r][1];
+            var rTglStr = "";
+            if (rTgl instanceof Date) {
+              var ry = rTgl.getFullYear();
+              var rm = String(rTgl.getMonth() + 1).padStart(2, '0');
+              var rd = String(rTgl.getDate()).padStart(2, '0');
+              rTglStr = ry + "-" + rm + "-" + rd;
+            } else {
+              rTglStr = String(rTgl);
+            }
+
+            // Jika tanggal & NIS cocok, timpa data statusnya
+            if (rTglStr === tanggal && String(existingData[r][3]) === nisInput) {
+              sheetAbsensi.getRange(r + 1, 6).setValue(statusInput);
+              break;
+            }
+          }
+        }
+        return ContentService.createTextOutput(JSON.stringify({ result: "success", message: "Data presensi berhasil diperbarui (Mode Edit)!" })).setMimeType(ContentService.MimeType.JSON);
+
+      } else {
+        // --- MODE INSERT BARU (PERTAMA KALI ABSEN) ---
+        var rowsToAppend = [];
+        for (var m = 0; m < dataAbsensi.length; m++) {
+          rowsToAppend.push([timestamp, tanggal, kelas, dataAbsensi[m].nis, dataAbsensi[m].nama, dataAbsensi[m].status, kordinatInfo]);
+        }
+        if (rowsToAppend.length > 0) {
+          sheetAbsensi.getRange(sheetAbsensi.getLastRow() + 1, 1, rowsToAppend.length, rowsToAppend[0].length).setValues(rowsToAppend);
+        }
+        return ContentService.createTextOutput(JSON.stringify({ result: "success", message: "Presensi berhasil disimpan!" })).setMimeType(ContentService.MimeType.JSON);
+      }
+    }
+    // ====================================================
+    // 4. AMBIL REKAP DATA ABSENSI
+    // ====================================================
+    else if (action === "get_rekap") {
+      var kelasRekap = contents.kelas;
+      var bulanRekap = contents.bulan;
+      var tahunRekap = contents.tahun;
+
+      var targetSheetName = "Absensi_" + kelasRekap;
+      var sheetTarget = ss.getSheetByName(targetSheetName);
+
+      if (!sheetTarget) {
+        return ContentService.createTextOutput(
+          JSON.stringify({ result: "success", data: [] })
+        ).setMimeType(ContentService.MimeType.JSON);
+      }
+
+      var valuesRekap = sheetTarget.getDataRange().getValues();
+      var records = [];
+
+      for (var k = 1; k < valuesRekap.length; k++) {
+        var row = valuesRekap[k];
+        var rawTgl = row[1];
+        var tglStr = "";
+
+        if (rawTgl instanceof Date) {
+          var y = rawTgl.getFullYear();
+          var m = String(rawTgl.getMonth() + 1).padStart(2, '0');
+          var d = String(rawTgl.getDate()).padStart(2, '0');
+          tglStr = y + "-" + m + "-" + d;
+        } else {
+          tglStr = String(rawTgl);
+        }
+
+        var parts = tglStr.split("-");
+        var rowTahun = parts[0];
+        var rowBulan = parts[1];
+
+        var matchTahun = (!tahunRekap || rowTahun === String(tahunRekap));
+        var matchBulan = (!bulanRekap || bulanRekap === "all" || rowBulan === String(bulanRekap).padStart(2, '0'));
+
+        if (matchTahun && matchBulan) {
+          records.push({
+            tanggal: tglStr,
+            nis: row[3],
+            nama: row[4],
+            status: row[5]
+          });
+        }
+      }
+
+      return ContentService.createTextOutput(
+        JSON.stringify({ result: "success", data: records })
+      ).setMimeType(ContentService.MimeType.JSON);
+    }
+    // ====================================================
+    // 5. AMBIL LAPORAN PRESENSI HARI INI
+    // ====================================================
+    else if (action === "get_today_summary") {
+      var todayStr = contents.tanggal;
+      var sheets = ss.getSheets();
+      var summary = {};
+
+      for (var s = 0; s < sheets.length; s++) {
+        var sheetName = sheets[s].getName();
+        if (sheetName.startsWith("Absensi_")) {
+          var namaKelas = sheetName.replace("Absensi_", "");
+          if (!summary[namaKelas]) {
+             summary[namaKelas] = { hadir: 0, sakit: 0, izin: 0, alpa: 0, submitted: false };
+          }
+          
+          var data = sheets[s].getDataRange().getValues();
+          for (var r = 1; r < data.length; r++) {
+            var rawTgl = data[r][1];
+            var tglStr = "";
+            
+            if (rawTgl instanceof Date) {
+              var y = rawTgl.getFullYear();
+              var m = String(rawTgl.getMonth() + 1).padStart(2, '0');
+              var d = String(rawTgl.getDate()).padStart(2, '0');
+              tglStr = y + "-" + m + "-" + d;
+            } else {
+              tglStr = String(rawTgl);
+            }
+
+            if (tglStr === todayStr) {
+               summary[namaKelas].submitted = true;
+               var status = String(data[r][5]).trim().toLowerCase();
+               if (status === 'hadir') summary[namaKelas].hadir++;
+               else if (status === 'sakit') summary[namaKelas].sakit++;
+               else if (status === 'izin') summary[namaKelas].izin++;
+               else if (status === 'alpa') summary[namaKelas].alpa++;
+            }
+          }
+        }
+      }
+      return ContentService.createTextOutput(
+        JSON.stringify({ result: "success", data: summary })
+      ).setMimeType(ContentService.MimeType.JSON);
+    }
+    // ====================================================
+    // 6. SIMPAN PENGATURAN KE DATABASE
+    // ====================================================
+    else if (action === "simpan_pengaturan") {
+      var sheetPengaturan = ss.getSheetByName("Pengaturan");
+      if (!sheetPengaturan) {
+        sheetPengaturan = ss.insertSheet("Pengaturan");
+      }
+      
+      sheetPengaturan.clearContents();
+      sheetPengaturan.appendRow(["LATITUDE", "LONGITUDE", "RADIUS_METER", "WAKTU_MULAI", "WAKTU_SELESAI"]);
+      sheetPengaturan.appendRow([contents.lat, contents.lng, contents.radius, contents.waktu_mulai, contents.waktu_selesai]);
+
+      return ContentService.createTextOutput(
+        JSON.stringify({ result: "success", message: "Pengaturan berhasil disimpan di database!" })
+      ).setMimeType(ContentService.MimeType.JSON);
+    }
+
+
+// ====================================================
+    // 7. AMBIL PENGATURAN LOKASI DARI DATABASE (DITAMBAH JAM)
+    // ====================================================
+    else if (action === "get_pengaturan") {
+      var sheetPengaturan = ss.getSheetByName("Pengaturan");
+      var config = { lat: -6.200000, lng: 106.816666, radius: 50, waktu_mulai: "00:00", waktu_selesai: "23:59" }; 
+
+      if (sheetPengaturan) {
+        var dataTampilan = sheetPengaturan.getDataRange().getDisplayValues(); // Untuk teks Jam
+        var dataAsli = sheetPengaturan.getDataRange().getValues(); // Untuk angka Koordinat (Desimal Asli)
+        
+        if (dataAsli.length > 1) {
+          // 1. Tarik koordinat dari data asli agar desimal tidak terpotong (JANGAN DIHAPUS)
+          config.lat = parseFloat(dataAsli[1][0]);
+          config.lng = parseFloat(dataAsli[1][1]);
+          config.radius = parseInt(dataAsli[1][2]);
+
+          // 2. Tarik jam dari data tampilan agar format (HH:MM) tidak berubah menjadi tanggal
+          var wMulai = String(dataTampilan[1][3] || "00:00").trim();
+          var wSelesai = String(dataTampilan[1][4] || "23:59").trim();
+
+          // PERBAIKAN OTOMATIS: 
+          // Jika jam yang ditarik dari Sheets hanya 1 digit, paksa tambahkan angka "0"
+          if (wMulai.indexOf(':') === 1) wMulai = "0" + wMulai;
+          if (wSelesai.indexOf(':') === 1) wSelesai = "0" + wSelesai;
+
+          config.waktu_mulai = wMulai.substring(0, 5);
+          config.waktu_selesai = wSelesai.substring(0, 5);
+        }
+      }
+      
+      return ContentService.createTextOutput(
+        JSON.stringify({ result: "success", data: config })
+      ).setMimeType(ContentService.MimeType.JSON);
+    }
+
+    // ====================================================
+    // 8. RESET SELURUH DATABASE
+    // ====================================================
+    else if (action === "reset_database") {
+      var allSheets = ss.getSheets();
+      
+      var sheet1 = ss.getSheetByName("Sheet1");
+      if (!sheet1) sheet1 = ss.insertSheet("Sheet1");
+      sheet1.clear();
+
+      for (var n = 0; n < allSheets.length; n++) {
+        var shName = allSheets[n].getName();
+        // Lindungi Sheet Login dari penghapusan reset database
+        if (shName !== "Sheet1" && shName !== "Pengaturan" && shName !== "Login") {
+          ss.deleteSheet(allSheets[n]);
+        }
+      }
+
+      return ContentService.createTextOutput(
+        JSON.stringify({ result: "success", message: "Database berhasil direset total!" })
+      ).setMimeType(ContentService.MimeType.JSON);
+    }
+
+  } catch (error) {
+    return ContentService.createTextOutput(
+      JSON.stringify({ result: "error", message: error.toString() })
+    ).setMimeType(ContentService.MimeType.JSON);
+    
+  } finally {
+    lock.releaseLock();
+  }
+}
+
+function doGet(e) {
+  return ContentService.createTextOutput("Endpoint EduAbsensi Aktif. Akses data hanya menggunakan POST request.");
+}
