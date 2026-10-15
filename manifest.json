@@ -1,0 +1,24 @@
+{
+  "name": "EduAbsensi - Presensi Sekolah & Madrasah",
+  "short_name": "EduAbsensi",
+  "description": "Sistem Informasi Presensi Harian Siswa & Santri berbasis Web dan PWA",
+  "start_url": ".",
+  "display": "standalone",
+  "background_color": "#0f172a",
+  "theme_color": "#4f46e5",
+  "orientation": "portrait",
+  "icons": [
+    {
+      "src": "asset/logoapp.png",
+      "sizes": "192x192",
+      "type": "image/png",
+      "purpose": "any maskable"
+    },
+    {
+      "src": "asset/logoapp.png",
+      "sizes": "512x512",
+      "type": "image/png",
+      "purpose": "any maskable"
+    }
+  ]
+}

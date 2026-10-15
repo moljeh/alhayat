@@ -1,0 +1,75 @@
+:root {
+    --primary: #4f46e5;
+    --primary-hover: #4338ca;
+    --blue: #3b82f6;
+    --blue-hover: #2563eb;
+    --bg-main: #f1f5f9;
+    --surface: #ffffff;
+    --text-dark: #0f172a;
+    --text-muted: #64748b;
+    --border: #e2e8f0;
+    --radius: 12px;
+}
+
+* { box-sizing: border-box; margin: 0; padding: 0; font-family: 'Poppins', sans-serif; }
+body { background-color: var(--bg-main); color: var(--text-dark); padding-bottom: 40px; }
+
+.topbar { background: var(--surface); padding: 16px 20px; box-shadow: 0 2px 10px rgba(0,0,0,0.05); position: sticky; top: 0; z-index: 100; }
+.brand { display: flex; align-items: center; gap: 12px; }
+.brand img { width: 45px; height: 45px; object-fit: contain; }
+.brand h2 { font-size: 1.1rem; font-weight: 700; color: var(--primary); margin: 0; }
+.brand p { font-size: 0.75rem; color: var(--text-muted); margin: 0; }
+
+.container { padding: 20px; max-width: 600px; margin: 0 auto; }
+
+.alert { padding: 12px 16px; border-radius: 8px; font-size: 0.85rem; font-weight: 600; margin-bottom: 20px; display: flex; align-items: center; gap: 10px; }
+.alert-info { background: #dbeafe; color: #1e40af; border: 1px solid #bfdbfe; }
+.alert-success { background: #d1fae5; color: #065f46; border: 1px solid #a7f3d0; }
+.alert-danger { background: #fee2e2; color: #991b1b; border: 1px solid #fecaca; }
+
+.card { background: var(--surface); border-radius: var(--radius); padding: 20px; margin-bottom: 20px; box-shadow: 0 4px 6px -1px rgba(0,0,0,0.05); }
+.card-title { font-size: 1rem; font-weight: 700; border-bottom: 1px solid var(--border); padding-bottom: 10px; margin-bottom: 15px; display: flex; align-items: center; gap: 8px; color: var(--text-dark); }
+
+.form-group { margin-bottom: 15px; }
+.form-group label { display: block; font-size: 0.85rem; font-weight: 600; margin-bottom: 6px; color: var(--text-muted); }
+.form-control { width: 100%; padding: 12px; border: 1px solid var(--border); border-radius: 8px; font-size: 0.9rem; background: var(--bg-main); outline: none; }
+.form-control:focus { border-color: var(--primary); }
+
+.btn { width: 100%; padding: 14px; border-radius: 8px; font-size: 0.95rem; font-weight: 600; border: none; cursor: pointer; display: flex; align-items: center; justify-content: center; gap: 8px; transition: 0.2s; }
+.btn-primary { background: var(--primary); color: white; }
+.btn-primary:hover { background: var(--primary-hover); }
+.btn-primary:disabled { background: #94a3b8; }
+.btn-blue { background: var(--blue); color: white; }
+.btn-blue:hover { background: var(--blue-hover); }
+
+.location-status { background: var(--bg-main); padding: 12px; border-radius: 8px; font-size: 0.85rem; font-weight: 600; text-align: center; margin-bottom: 15px; border: 1px solid var(--border); color: var(--text-muted); }
+.loc-success { background: #d1fae5; color: #065f46; border-color: #a7f3d0; }
+.loc-error { background: #fee2e2; color: #991b1b; border-color: #fecaca; }
+
+.table-responsive { width: 100%; overflow-x: auto; border: 1px solid var(--border); border-radius: 8px; }
+table { width: 100%; border-collapse: collapse; text-align: left; }
+table th { background: #f8fafc; font-size: 0.8rem; padding: 10px; border-bottom: 1px solid var(--border); color: var(--text-muted); text-transform: uppercase; }
+table td { padding: 10px; border-bottom: 1px solid var(--border); font-size: 0.85rem; vertical-align: middle; }
+.text-center { text-align: center; }
+.text-muted { color: var(--text-muted); }
+
+.status-select { width: 100%; padding: 8px; border-radius: 6px; font-weight: 600; font-size: 0.85rem; border: 1px solid var(--border); background: white; outline: none; }
+
+.pwa-banner { position: fixed; bottom: -100px; left: 0; right: 0; background: white; padding: 15px 20px; box-shadow: 0 -4px 15px rgba(0,0,0,0.1); display: flex; justify-content: space-between; align-items: center; transition: 0.4s; z-index: 999; }
+.pwa-banner.show { bottom: 0; }
+.pwa-banner-content { display: flex; align-items: center; gap: 12px; }
+.pwa-logo { width: 40px; height: 40px; border-radius: 8px; }
+.pwa-text h4 { margin: 0; font-size: 0.9rem; }
+.pwa-text p { margin: 0; font-size: 0.75rem; color: var(--text-muted); }
+.pwa-banner-actions { display: flex; gap: 10px; align-items: center; }
+
+/* ==========================================
+   WARNA DINAMIS DROPDOWN STATUS ABSENSI
+   ========================================== */
+.status-hadir { color: #0f172a !important; font-weight: 700; } /* Hitam */
+.status-sakit { color: #d97706 !important; font-weight: 700; } /* Oranye / Kuning Gelap */
+.status-izin  { color: #2563eb !important; font-weight: 700; } /* Biru */
+.status-alpa  { color: #dc2626 !important; font-weight: 700; } /* Merah */
+
+/* Agar opsi di dalam dropdown tetap berwarna standar saat dibuka */
+.status-select option { color: #0f172a; font-weight: normal; }

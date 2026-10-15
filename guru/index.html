@@ -1,0 +1,109 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Presensi Guru - EduAbsensi</title>
+
+    <!-- PWA Settings Khusus Guru -->
+    <link rel="manifest" href="manifest.json">
+    <meta name="theme-color" content="#3b82f6">
+    <meta name="mobile-web-app-capable" content="yes">
+    <meta name="apple-mobile-web-app-capable" content="yes">
+    <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+    <meta name="apple-mobile-web-app-title" content="Presensi Guru">
+    <link rel="apple-touch-icon" href="../asset/logoapp.png">
+    <link rel="icon" type="image/png" href="../asset/favicon.png">
+    
+    <!-- Google Fonts & FontAwesome -->
+    <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@400;500;600;700&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+
+    <!-- SweetAlert2 -->
+    <script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
+    <link rel="stylesheet" href="style.css">
+	
+	<!-- Meta Tags Khusus WhatsApp & Media Sosial (Open Graph) -->
+    <meta property="og:type" content="website">
+    <meta property="og:title" content="EduAbsensi - Portal Guru">
+    <meta property="og:description" content="Aplikasi input presensi harian siswa untuk Guru. Dilengkapi dengan verifikasi otomatis sesuai jam dan lokasi sekolah.">
+    <!-- Ganti URL di bawah dengan URL web asli Anda jika sudah online -->
+    <meta property="og:image" content="https://moljeh.github.io/absensi/asset/logoweb.png">
+    <meta property="og:url" content="https://moljeh.github.io/absensi/guru/">
+	
+	
+	
+	
+	
+	
+	
+</head>
+<body>
+
+    <header class="topbar">
+        <div class="brand">
+            <img src="../asset/logoweb.png" alt="Logo">
+            <div>
+                <h2>EduAbsensi Guru</h2>
+                <p>Portal Input Presensi Harian</p>
+            </div>
+        </div>
+    </header>
+
+    <main class="container">
+        
+        <div class="card">
+            <h3 class="card-title"><i class="fa-solid fa-clipboard-user"></i> Data Presensi</h3>
+            <div class="form-group">
+                <label>Tanggal</label>
+                <input type="date" id="tanggal" class="form-control" readonly>
+            </div>
+            <div class="form-group">
+                <label>Pilih Kelas Anda</label>
+                <select id="kelas" class="form-control" onchange="filterDataAbsensi()" disabled>
+                    <option value="">-- Menunggu Data... --</option>
+                </select>
+            </div>
+        </div>
+
+        <div class="card">
+            <h3 class="card-title"><i class="fa-solid fa-users"></i> Daftar Siswa</h3>
+            <div class="table-responsive">
+                <table id="attendance-table">
+                    <thead>
+                        <tr>
+                            <th width="10%">No</th>
+                            <th width="50%">Nama Siswa</th>
+                            <th width="40%">Status</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        <tr><td colspan="3" class="text-center text-muted">Silakan pilih kelas terlebih dahulu.</td></tr>
+                    </tbody>
+                </table>
+            </div>
+            <button class="btn btn-primary" onclick="simpanAbsensi()" style="margin-top: 15px;">
+                <i class="fa-solid fa-paper-plane"></i> Kirim Presensi Sekarang
+            </button>
+        </div>
+
+    </main>
+
+    <!-- PWA Install Banner -->
+    <div id="pwa-install-banner" class="pwa-banner">
+        <div class="pwa-banner-content">
+            <img src="../asset/logoweb.png" alt="App Logo" class="pwa-logo">
+            <div class="pwa-text">
+                <h4>Install App Guru</h4>
+                <p>Pasang di HP untuk akses presensi harian.</p>
+            </div>
+        </div>
+        <div class="pwa-banner-actions">
+            <button id="btn-install-pwa" class="btn btn-primary" style="padding: 6px 12px; font-size: 0.8rem;">Install</button>
+            <button id="btn-close-pwa" style="background:none; border:none; font-size:1.2rem; padding:5px;"><i class="fa-solid fa-xmark"></i></button>
+        </div>
+    </div>
+
+    <script src="script.js"></script>
+</body>
+</html>
