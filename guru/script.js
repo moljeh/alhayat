@@ -4,12 +4,7 @@ const URL_WEB_APP = "https://script.google.com/macros/s/AKfycbxULMqYGSLb58eVXLsB
 let SCHOOL_LAT, SCHOOL_LNG, WAKTU_MULAI, WAKTU_SELESAI, MAX_RADIUS_METERS;
 let masterSiswaList = [];
 
-// Setup Tanggal Hari Ini
-const today = new Date();
-const year = today.getFullYear();
-const month = String(today.getMonth() + 1).padStart(2, '0');
-const day = String(today.getDate()).padStart(2, '0');
-document.getElementById('tanggal').value = `${year}-${month}-${day}`;
+
 
 // Memastikan jika tanggal berubah, tabel otomatis me-refresh data
 document.getElementById('tanggal').addEventListener('change', filterDataAbsensi);
@@ -117,7 +112,7 @@ function hitungJarak(lat1, lon1, lat2, lon2) {
 // ==========================================
 // INISIALISASI & TARIK DATA
 // ==========================================
-function inisialisasiAplikasiGuru() {
+async function inisialisasiAplikasiGuru() {
     // 1. Munculkan halaman utama yang disembunyikan sebelumnya
     const halamanUtama = document.getElementById('halaman-utama');
     if (halamanUtama) {
@@ -126,13 +121,32 @@ function inisialisasiAplikasiGuru() {
 
     Swal.fire({
         title: '<span style="font-size: 1.1rem;">Menyiapkan Data...</span>',
-        html: '<span style="font-size: 0.85rem; color: #64748b;">Menghubungkan ke server sekolah.</span>',
+        html: '<span style="font-size: 0.85rem; color: #64748b;">Mengecek waktu & sinkronisasi ke server.</span>',
         allowOutsideClick: false,
         showConfirmButton: false,
         width: '300px', padding: '1.5em',
         didOpen: () => { Swal.showLoading(); }
     });
 
+    // AMBIL TANGGAL ASLI DARI SERVER INTERNET
+    let today = new Date();
+    try {
+        const res = await fetch('https://worldtimeapi.org/api/timezone/Asia/Jakarta');
+        if (res.ok) {
+            const data = await res.json();
+            today = new Date(data.datetime);
+        }
+    } catch (e) {
+        console.warn("Gagal mengecek waktu online, menggunakan tanggal lokal.");
+    }
+    
+    // Terapkan ke form tanggal
+    const year = today.getFullYear();
+    const month = String(today.getMonth() + 1).padStart(2, '0');
+    const day = String(today.getDate()).padStart(2, '0');
+    document.getElementById('tanggal').value = `${year}-${month}-${day}`;
+
+    // Lanjutkan mengambil pengaturan dari Google Sheets
     fetch(URL_WEB_APP, {
         method: 'POST',
         headers: { 'Content-Type': 'text/plain;charset=utf-8' },
@@ -374,8 +388,16 @@ async function simpanAbsensi() {
             }).then(res => res.json()).then(response => {
                 if (response.result === 'success') {
                     notifMini('Terkirim!', `Presensi ${kelas} berhasil diserahkan.<br><br><b>Jarak Anda: ${Math.round(jarakMeter)} m</b>`, 'success');
+                    
                     document.getElementById('kelas').value = "";
                     document.querySelector('#attendance-table tbody').innerHTML = `<tr><td colspan="3" class="text-center text-muted">Silakan pilih kelas terlebih dahulu.</td></tr>`;
+                    
+                    // TAMBAHAN: Kembalikan warna dan teks tombol ke mode awal (Biru)
+                    const btnSimpan = document.querySelector('.btn-primary');
+                    if (btnSimpan) {
+                        btnSimpan.innerHTML = '<i class="fa-solid fa-paper-plane"></i> Kirim Presensi Sekarang';
+                        btnSimpan.style.backgroundColor = 'var(--primary)';
+                    }
                 } else {
                     notifMini('Gagal!', response.message, 'error');
                 }
