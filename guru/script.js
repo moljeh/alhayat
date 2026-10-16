@@ -35,9 +35,65 @@ function notifMini(title, text, icon) {
 }
 
 document.addEventListener('DOMContentLoaded', function() {
-    inisialisasiAplikasiGuru();
+    // Cek apakah guru sudah memasukkan PIN di sesi ini
+    if (sessionStorage.getItem('_guru_auth_valid')) {
+        inisialisasiAplikasiGuru();
+    } else {
+        memintaKodeAksesGuru();
+    }
 });
 
+// FUNGSI BARU: Gerbang Keamanan PIN Guru
+// FUNGSI BARU: Gerbang Keamanan PIN Guru (Desain Modern)
+function memintaKodeAksesGuru() {
+    Swal.fire({
+        // Menambahkan ikon gembok dan mengatur ukuran font judul
+        title: '<i class="fa-solid fa-lock" style="color: #3b82f6; font-size: 2.2rem; margin-bottom: 10px; display: block;"></i><span style="font-size: 1.25rem; font-weight: 700; color: #0f172a;">Akses Terkunci</span>',
+        html: '<span style="font-size: 0.85rem; color: #64748b;">Masukkan 6 digit PIN untuk presensi.</span>',
+        input: 'password',
+        inputPlaceholder: '••••••',
+        width: '320px', // Membuat popup jadi lebih kecil dan ramping
+        padding: '1.5em 1em 2em', // Mengatur jarak luar agar pas
+        background: '#ffffff',
+        backdrop: 'rgba(15, 23, 42, 0.85)', // Warna background belakang lebih gelap & elegan
+        allowOutsideClick: false,
+        allowEscapeKey: false,
+        showCancelButton: false,
+        confirmButtonText: 'Buka Portal',
+        confirmButtonColor: '#3b82f6',
+        
+        // Memodifikasi kotak input teks PIN
+        inputAttributes: {
+            maxlength: 6,
+            autocapitalize: 'off',
+            autocorrect: 'off',
+            // CSS langsung untuk input: teks di tengah, font besar, huruf berjarak
+            style: 'text-align: center; letter-spacing: 12px; font-size: 1.5rem; font-weight: bold; border-radius: 12px; padding: 12px; box-shadow: none;'
+        },
+        
+        // Menambahkan class CSS khusus agar bisa di-custom di file style.css
+        customClass: {
+            popup: 'swal-modern-popup',
+            confirmButton: 'swal-modern-btn',
+            input: 'swal-modern-input'
+        },
+        
+        inputValidator: (value) => {
+            if (!value) {
+                return 'PIN tidak boleh kosong!';
+            }
+            // GANTI PIN DI SINI (Contoh: 123456)
+            if (value !== '112233') {
+                return 'PIN salah! Akses ditolak.';
+            }
+        }
+    }).then((result) => {
+        if (result.isConfirmed) {
+            sessionStorage.setItem('_guru_auth_valid', 'true');
+            inisialisasiAplikasiGuru();
+        }
+    });
+}
 // ==========================================
 // RUMUS MENGHITUNG JARAK (HAVERSINE)
 // ==========================================
@@ -191,8 +247,8 @@ function filterDataAbsensi() {
                     <strong>${siswa.nama}</strong><br>
                     <code style="font-size:0.75rem; color:#64748b;">${siswa.nis}</code>
                 </td>
-                <td>
-                    <select class="status-select" name="status_${index}" onchange="updateWarnaStatus(this)">
+               <td>
+                    <select class="status-select" name="status_${index}" data-nis="${siswa.nis}" data-nama="${siswa.nama}" onchange="updateWarnaStatus(this)">
                         <option value="Hadir" ${statusTersimpan==='Hadir'?'selected':''}>Hadir</option>
                         <option value="Sakit" ${statusTersimpan==='Sakit'?'selected':''}>Sakit</option>
                         <option value="Izin" ${statusTersimpan==='Izin'?'selected':''}>Izin</option>
@@ -225,7 +281,7 @@ function filterDataAbsensi() {
 // ==========================================
 // KIRIM DATA ABSENSI KE GOOGLE SHEETS
 // ==========================================
-function simpanAbsensi() {
+async function simpanAbsensi() {
     const kelas = document.getElementById('kelas').value;
     const tanggal = document.getElementById('tanggal').value;
     const barisSiswa = document.querySelectorAll('#attendance-table tbody tr');
@@ -235,13 +291,24 @@ function simpanAbsensi() {
         return; 
     }
 
-    const now = new Date();
+    // CEK WAKTU REAL-TIME DARI SERVER INTERNET
+    let now = new Date();
+    try {
+        const res = await fetch('https://worldtimeapi.org/api/timezone/Asia/Jakarta');
+        if (res.ok) {
+            const data = await res.json();
+            now = new Date(data.datetime);
+        }
+    } catch (e) {
+        console.warn("Gagal mengecek waktu online, menggunakan jam lokal perangkat.");
+    }
+
     const currentHours = String(now.getHours()).padStart(2, '0');
     const currentMinutes = String(now.getMinutes()).padStart(2, '0');
     const currentTime = `${currentHours}:${currentMinutes}`;
 
     if (currentTime < WAKTU_MULAI || currentTime > WAKTU_SELESAI) {
-        notifMini('Waktu Ditutup', `Sekarang jam <b>${currentTime}</b>.<br>Presensi hanya bisa dikirim antara pukul <b>${WAKTU_MULAI}</b> s/d <b>${WAKTU_SELESAI}</b>.`, 'error');
+        notifMini('Waktu Ditutup', `Waktu server menunjukkan jam <b>${currentTime}</b>.<br>Presensi hanya bisa dikirim antara pukul <b>${WAKTU_MULAI}</b> s/d <b>${WAKTU_SELESAI}</b>.`, 'error');
         return;
     }
 
@@ -269,12 +336,13 @@ function simpanAbsensi() {
                 return;
             }
 
-            let hasilAbsensi = [];
+          let hasilAbsensi = [];
             barisSiswa.forEach((tr, index) => {
+                const selectElement = tr.querySelector(`select[name="status_${index}"]`);
                 hasilAbsensi.push({ 
-                    nis: tr.querySelector('code').innerText, 
-                    nama: tr.querySelectorAll('strong')[1].innerText, 
-                    status: tr.querySelector(`select[name="status_${index}"]`).value 
+                    nis: selectElement.getAttribute('data-nis'), 
+                    nama: selectElement.getAttribute('data-nama'), 
+                    status: selectElement.value 
                 });
             });
 

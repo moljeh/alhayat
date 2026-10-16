@@ -24,8 +24,8 @@ document.getElementById('tanggal').addEventListener('change', filterDataAbsensi)
 // PENANGANAN STATUS LOGIN (SESSION)
 // ==========================================
 document.addEventListener('DOMContentLoaded', function() {
-    // Mengecek apakah sudah login di sesi browser ini
-    if (!sessionStorage.getItem('adminLoggedIn')) {
+    // Mengecek apakah sudah login menggunakan token rahasia
+    if (!sessionStorage.getItem('_admin_auth_token')) {
         document.getElementById('login-wrapper').style.display = 'flex';
     } else {
         document.getElementById('login-wrapper').style.display = 'none';
@@ -62,7 +62,8 @@ function prosesLogin() {
 
 .then(response => {
         if (response.result === 'success') {
-            sessionStorage.setItem('adminLoggedIn', 'true');
+            // Simpan token acak sebagai penanda login
+            sessionStorage.setItem('_admin_auth_token', 'tkn_' + Math.random().toString(36).substr(2, 9));
             document.getElementById('login-wrapper').style.display = 'none';
             Swal.fire({ title: 'Berhasil', text: 'Selamat datang di Panel Admin', icon: 'success', timer: 1500, showConfirmButton: false });
             inisialisasiAplikasiAdmin();
@@ -106,9 +107,9 @@ function logoutAdmin() {
         showCancelButton: true,
         confirmButtonText: 'Ya, Keluar',
         cancelButtonText: 'Batal'
-    }).then((result) => {
+}).then((result) => {
         if (result.isConfirmed) {
-            sessionStorage.removeItem('adminLoggedIn');
+            sessionStorage.removeItem('_admin_auth_token');
             location.reload(); // Refresh halaman akan otomatis kembali ke form login
         }
     });
@@ -548,10 +549,11 @@ function filterDataAbsensi() {
                 statusTersimpan = savedItem.status;
             }
 
-            const tr = document.createElement('tr');
+           const tr = document.createElement('tr');
             tr.onclick = function() { document.querySelectorAll('#attendance-table tbody tr').forEach(r => r.classList.remove('selected-row')); tr.classList.add('selected-row'); };
             tr.innerHTML = `<td><strong>${index + 1}</strong></td><td><code>${siswa.nis}</code></td><td><strong>${siswa.nama}</strong></td>
-                <td><select class="status-select" name="status_${index}" onfocus="this.closest('tr').click()" onchange="updateWarnaStatus(this)">
+                <td><select class="status-select" name="status_${index}" data-nis="${siswa.nis}" data-nama="${siswa.nama}" onfocus="this.closest('tr').click()" onchange="updateWarnaStatus(this)">
+		   
                     <option value="Hadir" ${statusTersimpan==='Hadir'?'selected':''}>Hadir</option>
                     <option value="Sakit" ${statusTersimpan==='Sakit'?'selected':''}>Sakit</option>
                     <option value="Izin" ${statusTersimpan==='Izin'?'selected':''}>Izin</option>
@@ -580,7 +582,7 @@ function filterDataAbsensi() {
     });
 }
 
-function simpanAbsensi() {
+async function simpanAbsensi() {
     const kelas = document.getElementById('kelas').value;
     const tanggal = document.getElementById('tanggal').value;
     const barisSiswa = document.querySelectorAll('#attendance-table tbody tr');
@@ -590,7 +592,18 @@ function simpanAbsensi() {
         return; 
     }
 
-    const now = new Date();
+    // CEK WAKTU REAL-TIME DARI SERVER INTERNET
+    let now = new Date();
+    try {
+        const res = await fetch('https://worldtimeapi.org/api/timezone/Asia/Jakarta');
+        if (res.ok) {
+            const data = await res.json();
+            now = new Date(data.datetime);
+        }
+    } catch (e) {
+        console.warn("Gagal mengecek waktu online, menggunakan jam lokal perangkat.");
+    }
+
     const currentHours = String(now.getHours()).padStart(2, '0');
     const currentMinutes = String(now.getMinutes()).padStart(2, '0');
     const currentTime = `${currentHours}:${currentMinutes}`;
@@ -598,7 +611,7 @@ function simpanAbsensi() {
     if (currentTime < WAKTU_MULAI || currentTime > WAKTU_SELESAI) {
         Swal.fire({
             title: 'Waktu Absensi Ditolak',
-            text: `Sekarang jam ${currentTime}. Presensi hanya diizinkan antara pukul ${WAKTU_MULAI} sampai ${WAKTU_SELESAI}.`,
+            text: `Waktu server menunjukkan jam ${currentTime}. Presensi hanya diizinkan antara pukul ${WAKTU_MULAI} sampai ${WAKTU_SELESAI}.`,
             icon: 'error',
             confirmButtonColor: '#d33'
         });
@@ -606,6 +619,9 @@ function simpanAbsensi() {
     }
 
     // Mengecek apakah browser mendukung GPS
+	
+	
+	
     if (!navigator.geolocation) {
         Swal.fire('Error', 'Browser tidak mendukung pendeteksian lokasi (GPS).', 'error');
         return;
@@ -648,13 +664,11 @@ function simpanAbsensi() {
             // Jika lokasi sesuai, kumpulkan data dan simpan
 let hasilAbsensi = [];
     barisSiswa.forEach((tr, index) => {
+        const selectElement = tr.querySelector(`select[name="status_${index}"]`);
         hasilAbsensi.push({ 
-            nis: tr.querySelector('code').innerText, 
-            
-            // PERUBAHAN: Gunakan querySelectorAll lalu pilih index [1] agar mengambil <strong> yang KEDUA (Nama Siswa)
-            nama: tr.querySelectorAll('strong')[1].innerText, 
-            
-            status: tr.querySelector(`select[name="status_${index}"]`).value 
+            nis: selectElement.getAttribute('data-nis'), 
+            nama: selectElement.getAttribute('data-nama'), 
+            status: selectElement.value 
         });
     });
 
