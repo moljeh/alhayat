@@ -62,11 +62,14 @@ function memintaKodeAksesGuru() {
         confirmButtonText: 'Buka Portal',
         confirmButtonColor: '#3b82f6',
         
-        // Memodifikasi kotak input teks PIN
+// Memodifikasi kotak input teks PIN
         inputAttributes: {
             maxlength: 6,
             autocapitalize: 'off',
             autocorrect: 'off',
+            inputmode: 'numeric', // Otomatis memunculkan keyboard angka di HP
+            pattern: '[0-9]*', // Syarat standar HTML untuk form angka
+            oninput: "this.value = this.value.replace(/[^0-9]/g, '')", // Trik agar jika diketik huruf di keyboard laptop, otomatis terhapus
             // CSS langsung untuk input: teks di tengah, font besar, huruf berjarak
             style: 'text-align: center; letter-spacing: 12px; font-size: 1.5rem; font-weight: bold; border-radius: 12px; padding: 12px; box-shadow: none;'
         },
@@ -115,6 +118,12 @@ function hitungJarak(lat1, lon1, lat2, lon2) {
 // INISIALISASI & TARIK DATA
 // ==========================================
 function inisialisasiAplikasiGuru() {
+    // 1. Munculkan halaman utama yang disembunyikan sebelumnya
+    const halamanUtama = document.getElementById('halaman-utama');
+    if (halamanUtama) {
+        halamanUtama.style.display = 'block';
+    }
+
     Swal.fire({
         title: '<span style="font-size: 1.1rem;">Menyiapkan Data...</span>',
         html: '<span style="font-size: 0.85rem; color: #64748b;">Menghubungkan ke server sekolah.</span>',
