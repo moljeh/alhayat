@@ -290,6 +290,9 @@ function filterDataAbsensi() {
 // ==========================================
 // KIRIM DATA ABSENSI KE GOOGLE SHEETS
 // ==========================================
+// ==========================================
+// KIRIM DATA ABSENSI KE GOOGLE SHEETS
+// ==========================================
 async function simpanAbsensi() {
     const kelas = document.getElementById('kelas').value;
     const tanggal = document.getElementById('tanggal').value;
@@ -300,16 +303,30 @@ async function simpanAbsensi() {
         return; 
     }
 
-    // CEK WAKTU REAL-TIME DARI SERVER INTERNET
+    // 1. MUNCULKAN LOADING LEBIH AWAL AGAR TOMBOL TIDAK BISA DI-SPAM KLIK
+    Swal.fire({
+        title: '<span style="font-size: 1.1rem;">Memproses...</span>',
+        html: '<span style="font-size: 0.85rem; color: #64748b;">Mengecek waktu & sinkronisasi lokasi...</span>',
+        allowOutsideClick: false, showConfirmButton: false,
+        width: '300px', padding: '1.5em',
+        didOpen: () => { Swal.showLoading(); }
+    });
+
+    // 2. CEK WAKTU REAL-TIME (DENGAN BATAS MAKSIMAL 5 DETIK)
     let now = new Date();
     try {
-        const res = await fetch('https://worldtimeapi.org/api/timezone/Asia/Jakarta');
+        const controller = new AbortController();
+        const timeoutId = setTimeout(() => controller.abort(), 5000); // Batas tunggu 5 detik
+        
+        const res = await fetch('https://worldtimeapi.org/api/timezone/Asia/Jakarta', { signal: controller.signal });
+        clearTimeout(timeoutId);
+        
         if (res.ok) {
             const data = await res.json();
             now = new Date(data.datetime);
         }
     } catch (e) {
-        console.warn("Gagal mengecek waktu online, menggunakan jam lokal perangkat.");
+        console.warn("API lambat/gagal, beralih ke jam lokal.");
     }
 
     const currentHours = String(now.getHours()).padStart(2, '0');
@@ -317,7 +334,7 @@ async function simpanAbsensi() {
     const currentTime = `${currentHours}:${currentMinutes}`;
 
     if (currentTime < WAKTU_MULAI || currentTime > WAKTU_SELESAI) {
-        notifMini('Waktu Ditutup', `Waktu server menunjukkan jam <b>${currentTime}</b>.<br>Presensi hanya bisa dikirim antara pukul <b>${WAKTU_MULAI}</b> s/d <b>${WAKTU_SELESAI}</b>.`, 'error');
+        notifMini('Waktu Ditutup', `Waktu server menunjukkan jam <b>${currentTime}</b>.<br>Presensi hanya bisa dikirim pukul <b>${WAKTU_MULAI}</b> s/d <b>${WAKTU_SELESAI}</b>.`, 'error');
         return;
     }
 
@@ -326,14 +343,7 @@ async function simpanAbsensi() {
         return;
     }
 
-    Swal.fire({
-        title: '<span style="font-size: 1.1rem;">Memproses...</span>',
-        html: '<span style="font-size: 0.85rem; color: #64748b;">Mengirim data mohon tunggu.</span>',
-        allowOutsideClick: false, showConfirmButton: false,
-        width: '300px', padding: '1.5em',
-        didOpen: () => { Swal.showLoading(); }
-    });
-
+    // 3. AMBIL LOKASI DAN KIRIM KE DATABASE
     navigator.geolocation.getCurrentPosition(
         (position) => {
             const userLat = position.coords.latitude;
@@ -345,7 +355,7 @@ async function simpanAbsensi() {
                 return;
             }
 
-          let hasilAbsensi = [];
+            let hasilAbsensi = [];
             barisSiswa.forEach((tr, index) => {
                 const selectElement = tr.querySelector(`select[name="status_${index}"]`);
                 hasilAbsensi.push({ 
@@ -363,9 +373,7 @@ async function simpanAbsensi() {
                 body: JSON.stringify(payload)
             }).then(res => res.json()).then(response => {
                 if (response.result === 'success') {
-                    // Notifikasi sukses yang ramping
                     notifMini('Terkirim!', `Presensi ${kelas} berhasil diserahkan.<br><br><b>Jarak Anda: ${Math.round(jarakMeter)} m</b>`, 'success');
-                    
                     document.getElementById('kelas').value = "";
                     document.querySelector('#attendance-table tbody').innerHTML = `<tr><td colspan="3" class="text-center text-muted">Silakan pilih kelas terlebih dahulu.</td></tr>`;
                 } else {
