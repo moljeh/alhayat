@@ -4,13 +4,24 @@ function doPost(e) {
   try {
     lock.waitLock(10000);
 
-    var ss = SpreadsheetApp.getActiveSpreadsheet();
+var ss = SpreadsheetApp.getActiveSpreadsheet();
     var contents = JSON.parse(e.postData.contents);
     var action = contents.action;
+    var apiKey = contents.api_key;
+
+    // ====================================================
+    // GERBANG KEAMANAN UTAMA (API KEY)
+    // ====================================================
+    // Jika bukan fungsi login, maka WAJIB menyertakan API Key yang benar.
+    if (action !== "login" && apiKey !== "KODE_RAHASIA_ALHAYAT_2026") {
+       return ContentService.createTextOutput(JSON.stringify({ 
+           result: "error", 
+           message: "Akses Ditolak: API Key tidak valid." 
+       })).setMimeType(ContentService.MimeType.JSON);
+    }
 
     // ====================================================
     // 0. SISTEM LOGIN ADMINISTRATOR
-    // ====================================================
     if (action === "login") {
       var sheetLogin = ss.getSheetByName("Login");
       

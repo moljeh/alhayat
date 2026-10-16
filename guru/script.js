@@ -129,28 +129,38 @@ async function inisialisasiAplikasiGuru() {
     });
 
     // AMBIL TANGGAL ASLI DARI SERVER INTERNET
-    let today = new Date();
+    let year, month, day;
     try {
-        const res = await fetch('https://worldtimeapi.org/api/timezone/Asia/Jakarta');
+        const controller = new AbortController();
+        const timeoutId = setTimeout(() => controller.abort(), 5000); 
+
+        const res = await fetch('https://timeapi.io/api/Time/current/zone?timeZone=Asia/Jakarta', { signal: controller.signal });
+        
+        clearTimeout(timeoutId);
         if (res.ok) {
             const data = await res.json();
-            today = new Date(data.datetime);
+            // Ambil langsung angka tanggal dari API (Anti-geser zona waktu)
+            year = data.year;
+            month = String(data.month).padStart(2, '0');
+            day = String(data.day).padStart(2, '0');
         }
     } catch (e) {
         console.warn("Gagal mengecek waktu online, menggunakan tanggal lokal.");
+        const today = new Date();
+        year = today.getFullYear();
+        month = String(today.getMonth() + 1).padStart(2, '0');
+        day = String(today.getDate()).padStart(2, '0');
     }
     
     // Terapkan ke form tanggal
-    const year = today.getFullYear();
-    const month = String(today.getMonth() + 1).padStart(2, '0');
-    const day = String(today.getDate()).padStart(2, '0');
     document.getElementById('tanggal').value = `${year}-${month}-${day}`;
 
     // Lanjutkan mengambil pengaturan dari Google Sheets
+    // SISIPKAN API KEY DI SINI!
     fetch(URL_WEB_APP, {
         method: 'POST',
         headers: { 'Content-Type': 'text/plain;charset=utf-8' },
-        body: JSON.stringify({ action: "get_pengaturan" })
+        body: JSON.stringify({ action: "get_pengaturan", api_key: "KODE_RAHASIA_ALHAYAT_2026" })
     })
     .then(res => res.json())
     .then(response => {
@@ -180,7 +190,7 @@ function tarikDataSiswa() {
     fetch(URL_WEB_APP, {
         method: 'POST',
         headers: { 'Content-Type': 'text/plain;charset=utf-8' },
-        body: JSON.stringify({ action: "get_master" })
+       body: JSON.stringify({ action: "get_master", api_key: "KODE_RAHASIA_ALHAYAT_2026" })
     })
     .then(res => res.json())
     .then(response => {
@@ -239,12 +249,18 @@ function filterDataAbsensi() {
     // Munculkan indikator loading di dalam tabel
     tbody.innerHTML = `<tr><td colspan="3" class="text-center"><i class="fa-solid fa-spinner fa-spin" style="font-size:1.5rem; color:var(--primary); margin-bottom:10px;"></i><br><span style="font-size:0.85rem; color:#64748b;">Mengecek riwayat absen hari ini...</span></td></tr>`;
 
-    // Tarik data dari server untuk mengecek apakah kelas ini sudah diabsen hari ini
-    const parts = tanggalTerpilih.split("-");
+// Mencegah error jika tanggal dihapus (undefined)
+    const parts = tanggalTerpilih ? tanggalTerpilih.split("-") : ["", ""];
     
     fetch(URL_WEB_APP, {
         method: 'POST', headers: { 'Content-Type': 'text/plain;charset=utf-8' },
-        body: JSON.stringify({ action: "get_rekap", kelas: kelasTerpilih, bulan: parts[1], tahun: parts[0] })
+        body: JSON.stringify({ 
+            action: "get_rekap", 
+            api_key: "KODE_RAHASIA_ALHAYAT_2026", 
+            kelas: kelasTerpilih, 
+            bulan: parts[1] || "", 
+            tahun: parts[0] || "" 
+        })
     })
     .then(res => res.json())
     .then(response => {
@@ -301,9 +317,7 @@ function filterDataAbsensi() {
         tbody.innerHTML = `<tr><td colspan="3" class="text-center text-muted" style="color:red;">Gagal terhubung ke database. Silakan pilih kelas kembali.</td></tr>`;
     });
 }
-// ==========================================
-// KIRIM DATA ABSENSI KE GOOGLE SHEETS
-// ==========================================
+
 // ==========================================
 // KIRIM DATA ABSENSI KE GOOGLE SHEETS
 // ==========================================
@@ -326,26 +340,27 @@ async function simpanAbsensi() {
         didOpen: () => { Swal.showLoading(); }
     });
 
-    // 2. CEK WAKTU REAL-TIME (DENGAN BATAS MAKSIMAL 5 DETIK)
-    let now = new Date();
+    // 2. CEK WAKTU REAL-TIME DENGAN BATAS 5 DETIK (MENGGUNAKAN TIMEAPI.IO)
+    let currentTime = "";
     try {
         const controller = new AbortController();
-        const timeoutId = setTimeout(() => controller.abort(), 5000); // Batas tunggu 5 detik
+        const timeoutId = setTimeout(() => controller.abort(), 5000); 
         
-        const res = await fetch('https://worldtimeapi.org/api/timezone/Asia/Jakarta', { signal: controller.signal });
+        // Memanggil server waktu yang stabil
+        const res = await fetch('https://timeapi.io/api/Time/current/zone?timeZone=Asia/Jakarta', { signal: controller.signal });
         clearTimeout(timeoutId);
         
         if (res.ok) {
             const data = await res.json();
-            now = new Date(data.datetime);
+            currentTime = data.time; // Langsung comot string jam tanpa di-parse Date() yang rawan bergeser
         }
     } catch (e) {
         console.warn("API lambat/gagal, beralih ke jam lokal.");
+        const now = new Date();
+        const currentHours = String(now.getHours()).padStart(2, '0');
+        const currentMinutes = String(now.getMinutes()).padStart(2, '0');
+        currentTime = `${currentHours}:${currentMinutes}`;
     }
-
-    const currentHours = String(now.getHours()).padStart(2, '0');
-    const currentMinutes = String(now.getMinutes()).padStart(2, '0');
-    const currentTime = `${currentHours}:${currentMinutes}`;
 
     if (currentTime < WAKTU_MULAI || currentTime > WAKTU_SELESAI) {
         notifMini('Waktu Ditutup', `Waktu server menunjukkan jam <b>${currentTime}</b>.<br>Presensi hanya bisa dikirim pukul <b>${WAKTU_MULAI}</b> s/d <b>${WAKTU_SELESAI}</b>.`, 'error');
@@ -380,7 +395,16 @@ async function simpanAbsensi() {
             });
 
             const koordinatTersimpan = userLat.toFixed(6) + ", " + userLng.toFixed(6);
-            const payload = { action: "simpan_absensi", kelas, tanggal, koordinat: koordinatTersimpan, data: hasilAbsensi };
+            
+            // 4. MEMBUAT PAYLOAD DENGAN KUNCI RAHASIA API KEY
+            const payload = { 
+                action: "simpan_absensi", 
+                api_key: "KODE_RAHASIA_ALHAYAT_2026", // Wajib ada agar tidak ditolak server
+                kelas, 
+                tanggal, 
+                koordinat: koordinatTersimpan, 
+                data: hasilAbsensi 
+            };
 
             fetch(URL_WEB_APP, {
                 method: 'POST', headers: { 'Content-Type': 'text/plain;charset=utf-8' },
@@ -392,7 +416,7 @@ async function simpanAbsensi() {
                     document.getElementById('kelas').value = "";
                     document.querySelector('#attendance-table tbody').innerHTML = `<tr><td colspan="3" class="text-center text-muted">Silakan pilih kelas terlebih dahulu.</td></tr>`;
                     
-                    // TAMBAHAN: Kembalikan warna dan teks tombol ke mode awal (Biru)
+                    // Kembalikan warna dan teks tombol ke mode awal (Biru)
                     const btnSimpan = document.querySelector('.btn-primary');
                     if (btnSimpan) {
                         btnSimpan.innerHTML = '<i class="fa-solid fa-paper-plane"></i> Kirim Presensi Sekarang';
