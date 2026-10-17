@@ -1,7 +1,9 @@
 // PASTIKAN URL INI SAMA DENGAN URL DI HALAMAN ADMIN
-const URL_WEB_APP = "https://script.google.com/macros/s/AKfycbxULMqYGSLb58eVXLsBcrJ8FRNcifPmiJdxQdqEPbi8mg-BnlGU13ApRwGVBQSC2tSH/exec";
+const URL_WEB_APP = "https://script.google.com/macros/s/AKfycbwd_c85ocTYCKvooqWX0tBVD9BxrO6qJrTJJtVX0u3UfxaXeKJFUvAr4Kk8cGefqWBU6A/exec";
 
 let SCHOOL_LAT, SCHOOL_LNG, WAKTU_MULAI, WAKTU_SELESAI, MAX_RADIUS_METERS;
+let STATUS_LOKASI = "ON";
+let STATUS_WAKTU = "ON";
 let masterSiswaList = [];
 
 // Memastikan jika tanggal berubah, tabel otomatis me-refresh data
@@ -149,11 +151,14 @@ async function inisialisasiAplikasiGuru() {
         body: JSON.stringify({ action: "get_pengaturan", api_key: "KODE_RAHASIA_ALHAYAT_2026" })
     })
     .then(res => res.json())
-    .then(response => {
+	
+   .then(response => {
         if (response.result === 'success') {
             SCHOOL_LAT = response.data.lat;
             SCHOOL_LNG = response.data.lng;
             MAX_RADIUS_METERS = response.data.radius || 50;
+            STATUS_LOKASI = response.data.status_lokasi || "ON";
+            STATUS_WAKTU = response.data.status_waktu || "ON";
             
             let wMulai = String(response.data.waktu_mulai || "00:00").trim();
             let wSelesai = String(response.data.waktu_selesai || "23:59").trim();
@@ -300,6 +305,7 @@ function filterDataAbsensi() {
     });
 }
 
+
 // ==========================================
 // KIRIM DATA ABSENSI KE GOOGLE SHEETS
 // ==========================================
@@ -315,101 +321,113 @@ async function simpanAbsensi() {
 
     Swal.fire({
         title: '<span style="font-size: 1.1rem;">Memproses...</span>',
-        html: '<span style="font-size: 0.85rem; color: #64748b;">Mengecek waktu & sinkronisasi lokasi...</span>',
+        html: '<span style="font-size: 0.85rem; color: #64748b;">Mengecek setelan & sinkronisasi data...</span>',
         allowOutsideClick: false, showConfirmButton: false,
         width: '300px', padding: '1.5em',
         didOpen: () => { Swal.showLoading(); }
     });
 
-    let currentTime = "";
-    try {
-        const controller = new AbortController();
-        const timeoutId = setTimeout(() => controller.abort(), 5000); 
-        
-        const res = await fetch('https://timeapi.io/api/Time/current/zone?timeZone=Asia/Jakarta', { signal: controller.signal });
-        clearTimeout(timeoutId);
-        
-        if (res.ok) {
-            const data = await res.json();
-            currentTime = data.time; 
-        }
-    } catch (e) {
-        console.warn("API lambat/gagal, beralih ke jam lokal.");
-        const now = new Date();
-        const currentHours = String(now.getHours()).padStart(2, '0');
-        const currentMinutes = String(now.getMinutes()).padStart(2, '0');
-        currentTime = `${currentHours}:${currentMinutes}`;
-    }
-
-    if (currentTime < WAKTU_MULAI || currentTime > WAKTU_SELESAI) {
-        notifMini('Waktu Ditutup', `Waktu server menunjukkan jam <b>${currentTime}</b>.<br>Presensi hanya bisa dikirim pukul <b>${WAKTU_MULAI}</b> s/d <b>${WAKTU_SELESAI}</b>.`, 'error');
-        return;
-    }
-
-    if (!navigator.geolocation) {
-        notifMini('GPS Tidak Didukung', 'Browser/HP Anda tidak mendukung pendeteksian lokasi.', 'error');
-        return;
-    }
-
-    navigator.geolocation.getCurrentPosition(
-        (position) => {
-            const userLat = position.coords.latitude;
-            const userLng = position.coords.longitude;
-            const jarakMeter = hitungJarak(userLat, userLng, SCHOOL_LAT, SCHOOL_LNG);
-
-            if (jarakMeter > MAX_RADIUS_METERS) {
-                notifMini('Di Luar Radius!', `Jarak Anda <b>${Math.round(jarakMeter)} meter</b> dari sekolah.<br>Batas maksimal adalah ${MAX_RADIUS_METERS} meter. Silakan mendekat.`, 'warning');
-                return;
-            }
-
-            let hasilAbsensi = [];
-            barisSiswa.forEach((tr, index) => {
-                const selectElement = tr.querySelector(`select[name="status_${index}"]`);
-                hasilAbsensi.push({ 
-                    nis: selectElement.getAttribute('data-nis'), 
-                    nama: selectElement.getAttribute('data-nama'), 
-                    status: selectElement.value 
-                });
-            });
-
-            const koordinatTersimpan = userLat.toFixed(6) + ", " + userLng.toFixed(6);
+    // --- 1. CEK VALIDASI WAKTU JIKA ON ---
+    if (STATUS_WAKTU === "ON") {
+        let currentTime = "";
+        try {
+            const controller = new AbortController();
+            const timeoutId = setTimeout(() => controller.abort(), 5000); 
             
-            const payload = { 
-                action: "simpan_absensi", 
-                api_key: "KODE_RAHASIA_ALHAYAT_2026", 
-                kelas, 
-                tanggal, 
-                koordinat: koordinatTersimpan, 
-                data: hasilAbsensi 
-            };
+            const res = await fetch('https://timeapi.io/api/Time/current/zone?timeZone=Asia/Jakarta', { signal: controller.signal });
+            clearTimeout(timeoutId);
+            
+            if (res.ok) {
+                const data = await res.json();
+                currentTime = data.time; 
+            }
+        } catch (e) {
+            console.warn("API lambat/gagal, beralih ke jam lokal.");
+            const now = new Date();
+            const currentHours = String(now.getHours()).padStart(2, '0');
+            const currentMinutes = String(now.getMinutes()).padStart(2, '0');
+            currentTime = `${currentHours}:${currentMinutes}`;
+        }
 
-            fetch(URL_WEB_APP, {
-                method: 'POST', headers: { 'Content-Type': 'text/plain;charset=utf-8' },
-                body: JSON.stringify(payload)
-            }).then(res => res.json()).then(response => {
-                if (response.result === 'success') {
-                    notifMini('Terkirim!', `Presensi ${kelas} berhasil diserahkan.<br><br><b>Jarak Anda: ${Math.round(jarakMeter)} m</b>`, 'success');
-                    
-                    document.getElementById('kelas').value = "";
-                    document.querySelector('#attendance-table tbody').innerHTML = `<tr><td colspan="3" class="text-center text-muted">Silakan pilih kelas terlebih dahulu.</td></tr>`;
-                    
-                    const btnSimpan = document.querySelector('.btn-primary');
-                    if (btnSimpan) {
-                        btnSimpan.innerHTML = '<i class="fa-solid fa-paper-plane"></i> Kirim Presensi Sekarang';
-                        btnSimpan.style.backgroundColor = 'var(--primary)';
-                    }
-                } else {
-                    notifMini('Gagal!', response.message, 'error');
+        if (currentTime < WAKTU_MULAI || currentTime > WAKTU_SELESAI) {
+            notifMini('Waktu Ditutup', `Waktu server menunjukkan jam <b>${currentTime}</b>.<br>Presensi hanya bisa dikirim pukul <b>${WAKTU_MULAI}</b> s/d <b>${WAKTU_SELESAI}</b>.`, 'error');
+            return;
+        }
+    }
+
+    // --- FUNGSI INTERNAL UNTUK MENGIRIM KE SERVER ---
+    const eksekusiSimpanServer = (koordinatTersimpan, jarakMeter = 0) => {
+        let hasilAbsensi = [];
+        barisSiswa.forEach((tr, index) => {
+            const selectElement = tr.querySelector(`select[name="status_${index}"]`);
+            hasilAbsensi.push({ 
+                nis: selectElement.getAttribute('data-nis'), 
+                nama: selectElement.getAttribute('data-nama'), 
+                status: selectElement.value 
+            });
+        });
+
+        const payload = { 
+            action: "simpan_absensi", 
+            api_key: "KODE_RAHASIA_ALHAYAT_2026", 
+            kelas, 
+            tanggal, 
+            koordinat: koordinatTersimpan, 
+            data: hasilAbsensi 
+        };
+
+        fetch(URL_WEB_APP, {
+            method: 'POST', headers: { 'Content-Type': 'text/plain;charset=utf-8' },
+            body: JSON.stringify(payload)
+        }).then(res => res.json()).then(response => {
+            if (response.result === 'success') {
+                let infoJarak = STATUS_LOKASI === "ON" ? `<br><br><b>Jarak Anda: ${Math.round(jarakMeter)} m</b>` : '';
+                notifMini('Terkirim!', `Presensi ${kelas} berhasil diserahkan.${infoJarak}`, 'success');
+                
+                document.getElementById('kelas').value = "";
+                document.querySelector('#attendance-table tbody').innerHTML = `<tr><td colspan="3" class="text-center text-muted">Silakan pilih kelas terlebih dahulu.</td></tr>`;
+                
+                const btnSimpan = document.querySelector('.btn-primary');
+                if (btnSimpan) {
+                    btnSimpan.innerHTML = '<i class="fa-solid fa-paper-plane"></i> Kirim Presensi Sekarang';
+                    btnSimpan.style.backgroundColor = 'var(--primary)';
                 }
-            }).catch(err => notifMini('Error', 'Gagal mengirim data. Cek koneksi internet Anda.', 'error'));
-        },
-        (error) => {
-            notifMini('Lokasi Gagal', 'Gagal mendapatkan lokasi. Pastikan izin GPS aktif.', 'error');
-        },
-        { enableHighAccuracy: true, timeout: 10000, maximumAge: 0 }
-    );
-}
+            } else {
+                notifMini('Gagal!', response.message, 'error');
+            }
+        }).catch(err => notifMini('Error', 'Gagal mengirim data. Cek koneksi internet Anda.', 'error'));
+    };
 
+    // --- 2. CEK VALIDASI LOKASI JIKA ON ---
+    if (STATUS_LOKASI === "ON") {
+        if (!navigator.geolocation) {
+            notifMini('GPS Tidak Didukung', 'Browser/HP Anda tidak mendukung pendeteksian lokasi.', 'error');
+            return;
+        }
+
+        navigator.geolocation.getCurrentPosition(
+            (position) => {
+                const userLat = position.coords.latitude;
+                const userLng = position.coords.longitude;
+                const jarakMeter = hitungJarak(userLat, userLng, SCHOOL_LAT, SCHOOL_LNG);
+
+                if (jarakMeter > MAX_RADIUS_METERS) {
+                    notifMini('Di Luar Radius!', `Jarak Anda <b>${Math.round(jarakMeter)} meter</b> dari sekolah.<br>Batas maksimal adalah ${MAX_RADIUS_METERS} meter. Silakan mendekat.`, 'warning');
+                    return;
+                }
+
+                eksekusiSimpanServer(userLat.toFixed(6) + ", " + userLng.toFixed(6), jarakMeter);
+            },
+            (error) => {
+                notifMini('Lokasi Gagal', 'Gagal mendapatkan lokasi. Pastikan izin GPS aktif.', 'error');
+            },
+            { enableHighAccuracy: true, timeout: 10000, maximumAge: 0 }
+        );
+    } else {
+        // Jika Validasi Lokasi dimatikan, langsung kirim data tanpa cek GPS
+        eksekusiSimpanServer("GPS Dinonaktifkan", 0);
+    }
+}
 // ==========================================
 // PWA (KHUSUS GURU)
 // ==========================================

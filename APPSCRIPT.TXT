@@ -297,8 +297,16 @@ function doPost(e) {
       }
       
       sheetPengaturan.clearContents();
-      sheetPengaturan.appendRow(["LATITUDE", "LONGITUDE", "RADIUS_METER", "WAKTU_MULAI", "WAKTU_SELESAI"]);
-      sheetPengaturan.appendRow([contents.lat, contents.lng, contents.radius, contents.waktu_mulai, contents.waktu_selesai]);
+      sheetPengaturan.appendRow(["LATITUDE", "LONGITUDE", "RADIUS_METER", "WAKTU_MULAI", "WAKTU_SELESAI", "STATUS_LOKASI", "STATUS_WAKTU"]);
+      sheetPengaturan.appendRow([
+          contents.lat, 
+          contents.lng, 
+          contents.radius, 
+          contents.waktu_mulai, 
+          contents.waktu_selesai,
+          contents.status_lokasi,
+          contents.status_waktu
+      ]);
 
       return ContentService.createTextOutput(
         JSON.stringify({ result: "success", message: "Pengaturan berhasil disimpan di database!" })
@@ -309,9 +317,9 @@ function doPost(e) {
 // ====================================================
     // 7. AMBIL PENGATURAN LOKASI DARI DATABASE (DITAMBAH JAM)
     // ====================================================
-    else if (action === "get_pengaturan") {
+     else if (action === "get_pengaturan") {
       var sheetPengaturan = ss.getSheetByName("Pengaturan");
-      var config = { lat: -6.200000, lng: 106.816666, radius: 50, waktu_mulai: "00:00", waktu_selesai: "23:59" }; 
+      var config = { lat: -6.200000, lng: 106.816666, radius: 50, waktu_mulai: "00:00", waktu_selesai: "23:59", status_lokasi: "ON", status_waktu: "ON" };
 
       if (sheetPengaturan) {
         var dataTampilan = sheetPengaturan.getDataRange().getDisplayValues(); // Untuk teks Jam
@@ -332,8 +340,11 @@ function doPost(e) {
           if (wMulai.indexOf(':') === 1) wMulai = "0" + wMulai;
           if (wSelesai.indexOf(':') === 1) wSelesai = "0" + wSelesai;
 
-          config.waktu_mulai = wMulai.substring(0, 5);
+         config.waktu_mulai = wMulai.substring(0, 5);
           config.waktu_selesai = wSelesai.substring(0, 5);
+          
+          config.status_lokasi = dataTampilan[1][5] || "ON";
+          config.status_waktu = dataTampilan[1][6] || "ON";
         }
       }
       

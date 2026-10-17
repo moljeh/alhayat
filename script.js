@@ -1,10 +1,12 @@
-const URL_WEB_APP = "https://script.google.com/macros/s/AKfycbxULMqYGSLb58eVXLsBcrJ8FRNcifPmiJdxQdqEPbi8mg-BnlGU13ApRwGVBQSC2tSH/exec";
+const URL_WEB_APP = "https://script.google.com/macros/s/AKfycbwd_c85ocTYCKvooqWX0tBVD9BxrO6qJrTJJtVX0u3UfxaXeKJFUvAr4Kk8cGefqWBU6A/exec";
 
 let SCHOOL_LAT = -6.200000; 
 let SCHOOL_LNG = 106.816666;
 let MAX_RADIUS_METERS = 50; 
 let WAKTU_MULAI = "00:00";
 let WAKTU_SELESAI = "23:59";
+let STATUS_LOKASI = "ON";
+let STATUS_WAKTU = "ON";
 
 let masterSiswaList = [];
 let rekapSiswaHasil = [];
@@ -199,11 +201,12 @@ function muatPengaturanLokasi() {
     .then(res => res.json())
     .then(response => {
         if (response.result === 'success') {
-            SCHOOL_LAT = response.data.lat;
+SCHOOL_LAT = response.data.lat;
             SCHOOL_LNG = response.data.lng;
             MAX_RADIUS_METERS = response.data.radius || 50;
+            STATUS_LOKASI = response.data.status_lokasi || "ON";
+            STATUS_WAKTU = response.data.status_waktu || "ON";
 
-            // PERBAIKAN WAKTU: Tambahkan angka 0 di depan jika jam hanya 1 digit
             let wMulai = String(response.data.waktu_mulai || "00:00").trim();
             let wSelesai = String(response.data.waktu_selesai || "23:59").trim();
 
@@ -218,12 +221,16 @@ function muatPengaturanLokasi() {
             const radiusEl = document.getElementById('set-radius');
             const mulaiEl = document.getElementById('set-waktu-mulai');
             const selesaiEl = document.getElementById('set-waktu-selesai');
+            const statusLokasiEl = document.getElementById('status-lokasi');
+            const statusWaktuEl = document.getElementById('status-waktu');
             
             if(latEl) latEl.value = SCHOOL_LAT;
             if(lngEl) lngEl.value = SCHOOL_LNG;
             if(radiusEl) radiusEl.value = MAX_RADIUS_METERS;
             if(mulaiEl) mulaiEl.value = WAKTU_MULAI;
             if(selesaiEl) selesaiEl.value = WAKTU_SELESAI;
+            if(statusLokasiEl) statusLokasiEl.value = STATUS_LOKASI;
+            if(statusWaktuEl) statusWaktuEl.value = STATUS_WAKTU;
         }
     })
     .catch(err => console.error("Gagal memuat pengaturan lokasi", err));
@@ -235,6 +242,8 @@ function simpanPengaturanLokasi() {
     const radiusEl = document.getElementById('set-radius');
     const mulaiEl = document.getElementById('set-waktu-mulai');
     const selesaiEl = document.getElementById('set-waktu-selesai');
+    const statusLokasiEl = document.getElementById('status-lokasi');
+    const statusWaktuEl = document.getElementById('status-waktu');
     
     if (!latEl || !lngEl || !radiusEl || !mulaiEl || !selesaiEl) return;
 
@@ -243,6 +252,8 @@ function simpanPengaturanLokasi() {
     const radius = parseInt(radiusEl.value);
     const waktuMulai = mulaiEl.value;
     const waktuSelesai = selesaiEl.value;
+    const sLokasi = statusLokasiEl.value;
+    const sWaktu = statusWaktuEl.value;
 
     if (isNaN(lat) || isNaN(lng) || isNaN(radius) || !waktuMulai || !waktuSelesai) {
         Swal.fire('Peringatan', 'Harap isi semua kolom pengaturan dengan valid.', 'warning');
@@ -254,6 +265,8 @@ function simpanPengaturanLokasi() {
     MAX_RADIUS_METERS = radius;
     WAKTU_MULAI = waktuMulai;
     WAKTU_SELESAI = waktuSelesai;
+    STATUS_LOKASI = sLokasi;
+    STATUS_WAKTU = sWaktu;
 
     const btn = document.querySelector('#pengaturan-page .btn-primary');
     const originalText = btn.innerHTML;
@@ -270,7 +283,7 @@ function simpanPengaturanLokasi() {
     fetch(URL_WEB_APP, {
         method: 'POST',
         headers: { 'Content-Type': 'text/plain;charset=utf-8' },
-        body: JSON.stringify({ action: "simpan_pengaturan", lat: lat, lng: lng, radius: radius, waktu_mulai: waktuMulai, waktu_selesai: waktuSelesai })
+  body: JSON.stringify({ action: "simpan_pengaturan", lat: lat, lng: lng, radius: radius, waktu_mulai: waktuMulai, waktu_selesai: waktuSelesai, status_lokasi: sLokasi, status_waktu: sWaktu })
     })
     .then(res => res.json())
     .then(response => {
@@ -590,104 +603,96 @@ function simpanAbsensi() {
         return; 
     }
 
-    const now = new Date();
-    const currentHours = String(now.getHours()).padStart(2, '0');
-    const currentMinutes = String(now.getMinutes()).padStart(2, '0');
-    const currentTime = `${currentHours}:${currentMinutes}`;
+    // --- CEK VALIDASI WAKTU JIKA STATUS ON ---
+    if (STATUS_WAKTU === "ON") {
+        const now = new Date();
+        const currentHours = String(now.getHours()).padStart(2, '0');
+        const currentMinutes = String(now.getMinutes()).padStart(2, '0');
+        const currentTime = `${currentHours}:${currentMinutes}`;
 
-    if (currentTime < WAKTU_MULAI || currentTime > WAKTU_SELESAI) {
-        Swal.fire({
-            title: 'Waktu Absensi Ditolak',
-            text: `Sekarang jam ${currentTime}. Presensi hanya diizinkan antara pukul ${WAKTU_MULAI} sampai ${WAKTU_SELESAI}.`,
-            icon: 'error',
-            confirmButtonColor: '#d33'
-        });
-        return;
-    }
-
-    // Mengecek apakah browser mendukung GPS
-    if (!navigator.geolocation) {
-        Swal.fire('Error', 'Browser tidak mendukung pendeteksian lokasi (GPS).', 'error');
-        return;
+        if (currentTime < WAKTU_MULAI || currentTime > WAKTU_SELESAI) {
+            Swal.fire({
+                title: 'Waktu Absensi Ditolak',
+                text: `Sekarang jam ${currentTime}. Presensi hanya diizinkan antara pukul ${WAKTU_MULAI} sampai ${WAKTU_SELESAI}.`,
+                icon: 'error',
+                confirmButtonColor: '#d33'
+            });
+            return;
+        }
     }
 
     const btn = document.querySelector('#absensi-page .btn-primary');
     const originalText = btn.innerHTML;
     btn.disabled = true;
-    btn.innerHTML = '<i class="fa-solid fa-spinner fa-spin"></i> Memeriksa Lokasi...';
 
-    Swal.fire({
-        title: 'Mendeteksi Lokasi...',
-        text: 'Mohon tunggu, pastikan GPS Anda aktif.',
-        allowOutsideClick: false,
-        didOpen: () => { Swal.showLoading(); }
-    });
-
-    // Mengambil lokasi pengguna saat ini
-    navigator.geolocation.getCurrentPosition(
-        (position) => {
-            const userLat = position.coords.latitude;
-            const userLng = position.coords.longitude;
-            
-            // Hitung jarak pengguna ke koordinat sekolah
-            const jarakMeter = hitungJarak(userLat, userLng, SCHOOL_LAT, SCHOOL_LNG);
-
-            // Validasi Radius
-            if (jarakMeter > MAX_RADIUS_METERS) {
-                Swal.fire({
-                    title: 'Di Luar Radius!',
-                    text: `Jarak Anda ${Math.round(jarakMeter)} meter dari sekolah. Batas maksimal adalah ${MAX_RADIUS_METERS} meter. Silakan mendekat ke area sekolah.`,
-                    icon: 'error',
-                    confirmButtonColor: '#d33'
-                });
-                btn.disabled = false;
-                btn.innerHTML = originalText;
-                return;
-            }
-
-            // Jika lokasi sesuai, kumpulkan data dan simpan
-let hasilAbsensi = [];
-    barisSiswa.forEach((tr, index) => {
-        hasilAbsensi.push({ 
-            nis: tr.querySelector('code').innerText, 
-            
-            // PERUBAHAN: Gunakan querySelectorAll lalu pilih index [1] agar mengambil <strong> yang KEDUA (Nama Siswa)
-            nama: tr.querySelectorAll('strong')[1].innerText, 
-            
-            status: tr.querySelector(`select[name="status_${index}"]`).value 
-        });
-    });
-
-            const koordinatTersimpan = userLat.toFixed(6) + ", " + userLng.toFixed(6);
-            const payload = { action: "simpan_absensi", kelas, tanggal, koordinat: koordinatTersimpan, data: hasilAbsensi };
-
-            Swal.fire({
-                title: 'Menyimpan Presensi...',
-                text: 'Mohon tunggu, jangan tutup halaman ini.',
-                allowOutsideClick: false,
-                didOpen: () => { Swal.showLoading(); }
+    // Fungsi internal untuk mengirim data ke server
+    const eksekusiSimpanServer = (koordinatTersimpan, jarakMeter = 0) => {
+        let hasilAbsensi = [];
+        barisSiswa.forEach((tr, index) => {
+            hasilAbsensi.push({ 
+                nis: tr.querySelector('code').innerText, 
+                nama: tr.querySelectorAll('strong')[1].innerText, 
+                status: tr.querySelector(`select[name="status_${index}"]`).value 
             });
+        });
 
-            fetch(URL_WEB_APP, {
-                method: 'POST', headers: { 'Content-Type': 'text/plain;charset=utf-8' },
-                body: JSON.stringify(payload)
-            }).then(res => res.json()).then(response => {
-                if (response.result === 'success') {
-                    Swal.fire('Berhasil!', `Presensi ${kelas} berhasil disimpan. (Jarak: ${Math.round(jarakMeter)}m)`, 'success');
-                    muatLaporanHariIni(true);
-                } else {
-                    Swal.fire('Gagal!', response.message, 'error');
-                }
-            }).catch(err => Swal.fire('Error', 'Gagal menyimpan.', 'error'))
-            .finally(() => { btn.disabled = false; btn.innerHTML = originalText; });
-        },
-        (error) => {
-            Swal.fire('Gagal Mendapatkan Lokasi', 'Pastikan izin lokasi (GPS) pada browser/HP diaktifkan untuk situs ini.', 'error');
+        const payload = { action: "simpan_absensi", kelas, tanggal, koordinat: koordinatTersimpan, data: hasilAbsensi };
+
+        Swal.fire({ title: 'Menyimpan Presensi...', allowOutsideClick: false, didOpen: () => { Swal.showLoading(); } });
+
+        fetch(URL_WEB_APP, {
+            method: 'POST', headers: { 'Content-Type': 'text/plain;charset=utf-8' }, body: JSON.stringify(payload)
+        }).then(res => res.json()).then(response => {
+            if (response.result === 'success') {
+                let infoJarak = STATUS_LOKASI === "ON" ? ` (Jarak: ${Math.round(jarakMeter)}m)` : '';
+                Swal.fire('Berhasil!', `Presensi ${kelas} berhasil disimpan.${infoJarak}`, 'success');
+                muatLaporanHariIni(true);
+            } else {
+                Swal.fire('Gagal!', response.message, 'error');
+            }
+        }).catch(err => Swal.fire('Error', 'Gagal menyimpan.', 'error'))
+        .finally(() => { btn.disabled = false; btn.innerHTML = originalText; });
+    };
+
+    // --- CEK VALIDASI LOKASI JIKA STATUS ON ---
+    if (STATUS_LOKASI === "ON") {
+        if (!navigator.geolocation) {
+            Swal.fire('Error', 'Browser tidak mendukung pendeteksian lokasi (GPS).', 'error');
             btn.disabled = false;
-            btn.innerHTML = originalText;
-        },
-        { enableHighAccuracy: true, timeout: 10000, maximumAge: 0 }
-    );
+            return;
+        }
+
+        btn.innerHTML = '<i class="fa-solid fa-spinner fa-spin"></i> Memeriksa Lokasi...';
+        Swal.fire({ title: 'Mendeteksi Lokasi...', allowOutsideClick: false, didOpen: () => { Swal.showLoading(); } });
+
+        navigator.geolocation.getCurrentPosition(
+            (position) => {
+                const userLat = position.coords.latitude;
+                const userLng = position.coords.longitude;
+                const jarakMeter = hitungJarak(userLat, userLng, SCHOOL_LAT, SCHOOL_LNG);
+
+                if (jarakMeter > MAX_RADIUS_METERS) {
+                    Swal.fire({
+                        title: 'Di Luar Radius!',
+                        text: `Jarak Anda ${Math.round(jarakMeter)} meter dari sekolah. Batas maksimal adalah ${MAX_RADIUS_METERS} meter.`,
+                        icon: 'error',
+                        confirmButtonColor: '#d33'
+                    });
+                    btn.disabled = false; btn.innerHTML = originalText;
+                    return;
+                }
+                eksekusiSimpanServer(userLat.toFixed(6) + ", " + userLng.toFixed(6), jarakMeter);
+            },
+            (error) => {
+                Swal.fire('Gagal Mendapatkan Lokasi', 'Pastikan izin lokasi (GPS) pada browser/HP diaktifkan.', 'error');
+                btn.disabled = false; btn.innerHTML = originalText;
+            },
+            { enableHighAccuracy: true, timeout: 10000, maximumAge: 0 }
+        );
+    } else {
+        // Jika status OFF, langsung eksekusi tanpa mengecek GPS
+        eksekusiSimpanServer("GPS Dinonaktifkan", 0);
+    }
 }
 
 // ==========================================
