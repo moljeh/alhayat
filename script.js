@@ -9,7 +9,14 @@ let WAKTU_SELESAI = "23:59";
 let masterSiswaList = [];
 let rekapSiswaHasil = [];
 
+const options = { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' };
+document.getElementById('current-date').innerText = new Date().toLocaleDateString('id-ID', options);
 
+const today = new Date();
+const year = today.getFullYear();
+const month = String(today.getMonth() + 1).padStart(2, '0');
+const day = String(today.getDate()).padStart(2, '0');
+document.getElementById('tanggal').value = `${year}-${month}-${day}`;
 
 document.getElementById('tanggal').addEventListener('change', filterDataAbsensi);
 
@@ -17,8 +24,8 @@ document.getElementById('tanggal').addEventListener('change', filterDataAbsensi)
 // PENANGANAN STATUS LOGIN (SESSION)
 // ==========================================
 document.addEventListener('DOMContentLoaded', function() {
-    // Mengecek apakah sudah login menggunakan token rahasia
-    if (!sessionStorage.getItem('_admin_auth_token')) {
+    // Mengecek apakah sudah login di sesi browser ini
+    if (!sessionStorage.getItem('adminLoggedIn')) {
         document.getElementById('login-wrapper').style.display = 'flex';
     } else {
         document.getElementById('login-wrapper').style.display = 'none';
@@ -55,8 +62,7 @@ function prosesLogin() {
 
 .then(response => {
         if (response.result === 'success') {
-            // Simpan token acak sebagai penanda login
-            sessionStorage.setItem('_admin_auth_token', 'tkn_' + Math.random().toString(36).substr(2, 9));
+            sessionStorage.setItem('adminLoggedIn', 'true');
             document.getElementById('login-wrapper').style.display = 'none';
             Swal.fire({ title: 'Berhasil', text: 'Selamat datang di Panel Admin', icon: 'success', timer: 1500, showConfirmButton: false });
             inisialisasiAplikasiAdmin();
@@ -100,63 +106,24 @@ function logoutAdmin() {
         showCancelButton: true,
         confirmButtonText: 'Ya, Keluar',
         cancelButtonText: 'Batal'
-}).then((result) => {
+    }).then((result) => {
         if (result.isConfirmed) {
-            sessionStorage.removeItem('_admin_auth_token');
+            sessionStorage.removeItem('adminLoggedIn');
             location.reload(); // Refresh halaman akan otomatis kembali ke form login
         }
     });
 }
 
-async function inisialisasiAplikasiAdmin() {
-    // 1. Ambil Waktu dari Internet agar tidak bisa dimanipulasi
-    let year, month, day, formattedDate;
-
-    try {
-        const controller = new AbortController();
-        const timeoutId = setTimeout(() => controller.abort(), 5000); 
-
-        // Menggunakan TimeAPI untuk tanggal yang akurat
-        const res = await fetch('https://timeapi.io/api/Time/current/zone?timeZone=Asia/Jakarta', { signal: controller.signal });
-
-        clearTimeout(timeoutId);
-        if (res.ok) {
-            const data = await res.json();
-            
-            year = data.year;
-            month = String(data.month).padStart(2, '0');
-            day = String(data.day).padStart(2, '0');
-            
-            const hariMap = { "Sunday": "Minggu", "Monday": "Senin", "Tuesday": "Selasa", "Wednesday": "Rabu", "Thursday": "Kamis", "Friday": "Jumat", "Saturday": "Sabtu" };
-            const bulanMap = { 1: "Januari", 2: "Februari", 3: "Maret", 4: "April", 5: "Mei", 6: "Juni", 7: "Juli", 8: "Agustus", 9: "September", 10: "Oktober", 11: "November", 12: "Desember" };
-            
-            const namaHari = hariMap[data.dayOfWeek] || data.dayOfWeek;
-            const namaBulan = bulanMap[data.month] || data.month;
-            
-            formattedDate = `${namaHari}, ${data.day} ${namaBulan} ${year}`;
-        }
-    } catch (e) {
-        console.warn("Gagal mengecek waktu online, menggunakan jam lokal perangkat.");
-        const now = new Date();
-        year = now.getFullYear();
-        month = String(now.getMonth() + 1).padStart(2, '0');
-        day = String(now.getDate()).padStart(2, '0');
-        
-        const options = { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' };
-        formattedDate = now.toLocaleDateString('id-ID', options);
-    }
-
-    // 2. Terapkan tanggal asli ke UI Admin
-    document.getElementById('current-date').innerText = formattedDate;
-    document.getElementById('tanggal').value = `${year}-${month}-${day}`;
-
-    // 3. Jalankan pemuatan data
+function inisialisasiAplikasiAdmin() {
     muatPengaturanLokasi(); 
     muatMasterDataDariDatabase();
     muatLaporanHariIni(); 
 
+    // FITUR REAL-TIME: Perbarui laporan presensi secara otomatis setiap 60 detik
     setInterval(() => {
-        if (!document.hidden) muatLaporanHariIni(true); 
+        if (!document.hidden) {
+            muatLaporanHariIni(true); 
+        }
     }, 60000);
 }
 
@@ -224,10 +191,10 @@ function toggleRincianKelas() {
 // PENGATURAN KOORDINAT LOKASI & JAM ABSENSI
 // ==========================================
 function muatPengaturanLokasi() {
-   fetch(URL_WEB_APP, {
+    fetch(URL_WEB_APP, {
         method: 'POST',
         headers: { 'Content-Type': 'text/plain;charset=utf-8' },
-        body: JSON.stringify({ action: "get_pengaturan", api_key: "KODE_RAHASIA_ALHAYAT_2026" })
+        body: JSON.stringify({ action: "get_pengaturan" })
     })
     .then(res => res.json())
     .then(response => {
@@ -300,20 +267,11 @@ function simpanPengaturanLokasi() {
         didOpen: () => { Swal.showLoading(); }
     });
 
-fetch(URL_WEB_APP, {
+    fetch(URL_WEB_APP, {
         method: 'POST',
         headers: { 'Content-Type': 'text/plain;charset=utf-8' },
-        body: JSON.stringify({ 
-            action: "simpan_pengaturan", 
-            api_key: "KODE_RAHASIA_ALHAYAT_2026", 
-            lat: lat, 
-            lng: lng, 
-            radius: radius, 
-            waktu_mulai: waktuMulai, // PERHATIKAN INI
-            waktu_selesai: waktuSelesai // DAN INI
-        })
+        body: JSON.stringify({ action: "simpan_pengaturan", lat: lat, lng: lng, radius: radius, waktu_mulai: waktuMulai, waktu_selesai: waktuSelesai })
     })
-	
     .then(res => res.json())
     .then(response => {
         if (response.result === 'success') {
@@ -363,12 +321,11 @@ function muatMasterDataDariDatabase() {
     const tbody = document.querySelector('#master-table tbody');
     tbody.innerHTML = `<tr><td colspan="5"><div class="empty-state"><i class="fa-solid fa-spinner fa-spin"></i><p>Sedang menghubungkan & memuat data...</p></div></td></tr>`;
 
-fetch(URL_WEB_APP, {
+    fetch(URL_WEB_APP, {
         method: 'POST',
         headers: { 'Content-Type': 'text/plain;charset=utf-8' },
-        body: JSON.stringify({ action: "get_master", api_key: "KODE_RAHASIA_ALHAYAT_2026" })
+        body: JSON.stringify({ action: "get_master" })
     })
-	
     .then(res => res.json())
     .then(response => {
         if (response.result === 'success' && response.data && response.data.length > 0) {
@@ -405,12 +362,11 @@ function simpanMasterSiswa() {
         didOpen: () => { Swal.showLoading(); }
     });
 
-   fetch(URL_WEB_APP, {
+    fetch(URL_WEB_APP, {
         method: 'POST',
         headers: { 'Content-Type': 'text/plain;charset=utf-8' },
-        body: JSON.stringify({ action: "simpan_master", api_key: "KODE_RAHASIA_ALHAYAT_2026", data: masterSiswaList })
+        body: JSON.stringify({ action: "simpan_master", data: masterSiswaList })
     })
-	
     .then(res => res.json())
     .then(response => {
         if (response.result === 'success') Swal.fire('Berhasil!', `Master data berhasil disimpan.`, 'success');
@@ -569,19 +525,12 @@ function filterDataAbsensi() {
     tbody.innerHTML = `<tr><td colspan="4"><div class="empty-state"><i class="fa-solid fa-spinner fa-spin" style="font-size:2rem; color:var(--primary); margin-bottom:10px;"></i><p>Mengecek riwayat absensi tanggal ini...</p></div></td></tr>`;
 
     // Tarik data dari server untuk mengecek apakah sudah diabsen
-const parts = tanggalTerpilih ? tanggalTerpilih.split("-") : ["", ""];
+    const parts = tanggalTerpilih.split("-");
     
     fetch(URL_WEB_APP, {
         method: 'POST', headers: { 'Content-Type': 'text/plain;charset=utf-8' },
-        body: JSON.stringify({ 
-            action: "get_rekap", 
-            api_key: "KODE_RAHASIA_ALHAYAT_2026", 
-            kelas: kelasTerpilih, 
-            bulan: parts[1] || "", 
-            tahun: parts[0] || "" 
-        })
+        body: JSON.stringify({ action: "get_rekap", kelas: kelasTerpilih, bulan: parts[1], tahun: parts[0] })
     })
-	
     .then(res => res.json())
     .then(response => {
         tbody.innerHTML = ''; 
@@ -599,11 +548,10 @@ const parts = tanggalTerpilih ? tanggalTerpilih.split("-") : ["", ""];
                 statusTersimpan = savedItem.status;
             }
 
-           const tr = document.createElement('tr');
+            const tr = document.createElement('tr');
             tr.onclick = function() { document.querySelectorAll('#attendance-table tbody tr').forEach(r => r.classList.remove('selected-row')); tr.classList.add('selected-row'); };
             tr.innerHTML = `<td><strong>${index + 1}</strong></td><td><code>${siswa.nis}</code></td><td><strong>${siswa.nama}</strong></td>
-                <td><select class="status-select" name="status_${index}" data-nis="${siswa.nis}" data-nama="${siswa.nama}" onfocus="this.closest('tr').click()" onchange="updateWarnaStatus(this)">
-		   
+                <td><select class="status-select" name="status_${index}" onfocus="this.closest('tr').click()" onchange="updateWarnaStatus(this)">
                     <option value="Hadir" ${statusTersimpan==='Hadir'?'selected':''}>Hadir</option>
                     <option value="Sakit" ${statusTersimpan==='Sakit'?'selected':''}>Sakit</option>
                     <option value="Izin" ${statusTersimpan==='Izin'?'selected':''}>Izin</option>
@@ -632,7 +580,7 @@ const parts = tanggalTerpilih ? tanggalTerpilih.split("-") : ["", ""];
     });
 }
 
-async function simpanAbsensi() {
+function simpanAbsensi() {
     const kelas = document.getElementById('kelas').value;
     const tanggal = document.getElementById('tanggal').value;
     const barisSiswa = document.querySelectorAll('#attendance-table tbody tr');
@@ -642,62 +590,40 @@ async function simpanAbsensi() {
         return; 
     }
 
-    const btn = document.querySelector('#absensi-page .btn-primary');
-    const originalText = btn.innerHTML; // Simpan teks asli tombol
-
-    // 1. MUNCULKAN LOADING LEBIH AWAL AGAR TOMBOL TIDAK DI-SPAM KLIK
-    Swal.fire({
-        title: 'Memproses...',
-        text: 'Mengecek waktu & sinkronisasi lokasi...',
-        allowOutsideClick: false,
-        didOpen: () => { Swal.showLoading(); }
-    });
-
-    // Disable tombol agar tidak bisa diklik dua kali
-    btn.disabled = true;
-    btn.innerHTML = '<i class="fa-solid fa-spinner fa-spin"></i> Memeriksa Lokasi...';
-
-// 2. CEK WAKTU REAL-TIME DENGAN BATAS 5 DETIK
-    let currentTime = "";
-    try {
-        const controller = new AbortController();
-        const timeoutId = setTimeout(() => controller.abort(), 5000);
-        
-        const res = await fetch('https://timeapi.io/api/Time/current/zone?timeZone=Asia/Jakarta', { signal: controller.signal });
-        
-        clearTimeout(timeoutId);
-        if (res.ok) {
-            const data = await res.json();
-            currentTime = data.time; // Langsung comot string jam tanpa di-parse Date()
-        }
-    } catch (e) {
-        console.warn("Gagal mengecek waktu online, menggunakan jam lokal perangkat.");
-        const now = new Date();
-        const currentHours = String(now.getHours()).padStart(2, '0');
-        const currentMinutes = String(now.getMinutes()).padStart(2, '0');
-        currentTime = `${currentHours}:${currentMinutes}`;
-    }
+    const now = new Date();
+    const currentHours = String(now.getHours()).padStart(2, '0');
+    const currentMinutes = String(now.getMinutes()).padStart(2, '0');
+    const currentTime = `${currentHours}:${currentMinutes}`;
 
     if (currentTime < WAKTU_MULAI || currentTime > WAKTU_SELESAI) {
         Swal.fire({
             title: 'Waktu Absensi Ditolak',
-            text: `Waktu server menunjukkan jam ${currentTime}. Presensi hanya diizinkan antara pukul ${WAKTU_MULAI} sampai ${WAKTU_SELESAI}.`,
+            text: `Sekarang jam ${currentTime}. Presensi hanya diizinkan antara pukul ${WAKTU_MULAI} sampai ${WAKTU_SELESAI}.`,
             icon: 'error',
             confirmButtonColor: '#d33'
         });
-        btn.disabled = false;
-        btn.innerHTML = originalText;
         return;
     }
 
+    // Mengecek apakah browser mendukung GPS
     if (!navigator.geolocation) {
         Swal.fire('Error', 'Browser tidak mendukung pendeteksian lokasi (GPS).', 'error');
-        btn.disabled = false;
-        btn.innerHTML = originalText;
         return;
     }
 
-    // 3. AMBIL LOKASI DAN KIRIM KE DATABASE
+    const btn = document.querySelector('#absensi-page .btn-primary');
+    const originalText = btn.innerHTML;
+    btn.disabled = true;
+    btn.innerHTML = '<i class="fa-solid fa-spinner fa-spin"></i> Memeriksa Lokasi...';
+
+    Swal.fire({
+        title: 'Mendeteksi Lokasi...',
+        text: 'Mohon tunggu, pastikan GPS Anda aktif.',
+        allowOutsideClick: false,
+        didOpen: () => { Swal.showLoading(); }
+    });
+
+    // Mengambil lokasi pengguna saat ini
     navigator.geolocation.getCurrentPosition(
         (position) => {
             const userLat = position.coords.latitude;
@@ -719,32 +645,27 @@ async function simpanAbsensi() {
                 return;
             }
 
-            // Kumpulkan data siswa
-            let hasilAbsensi = [];
-            barisSiswa.forEach((tr, index) => {
-                const selectElement = tr.querySelector(`select[name="status_${index}"]`);
-                hasilAbsensi.push({ 
-                    nis: selectElement.getAttribute('data-nis'), 
-                    nama: selectElement.getAttribute('data-nama'), 
-                    status: selectElement.value 
-                });
-            });
+            // Jika lokasi sesuai, kumpulkan data dan simpan
+let hasilAbsensi = [];
+    barisSiswa.forEach((tr, index) => {
+        hasilAbsensi.push({ 
+            nis: tr.querySelector('code').innerText, 
+            
+            // PERUBAHAN: Gunakan querySelectorAll lalu pilih index [1] agar mengambil <strong> yang KEDUA (Nama Siswa)
+            nama: tr.querySelectorAll('strong')[1].innerText, 
+            
+            status: tr.querySelector(`select[name="status_${index}"]`).value 
+        });
+    });
 
             const koordinatTersimpan = userLat.toFixed(6) + ", " + userLng.toFixed(6);
-           const payload = { 
-                action: "simpan_absensi", 
-                api_key: "KODE_RAHASIA_ALHAYAT_2026", 
-                kelas, 
-                tanggal, 
-                koordinat: koordinatTersimpan, 
-                data: hasilAbsensi 
-            };
+            const payload = { action: "simpan_absensi", kelas, tanggal, koordinat: koordinatTersimpan, data: hasilAbsensi };
 
-            // Karena loading sudah muncul di atas, kita tidak perlu memanggil Swal.fire() lagi di sini
-            // Cukup perbarui teksnya jika ingin memberi tahu user (opsional)
-            Swal.update({
+            Swal.fire({
                 title: 'Menyimpan Presensi...',
-                text: 'Mohon tunggu, jangan tutup halaman ini.'
+                text: 'Mohon tunggu, jangan tutup halaman ini.',
+                allowOutsideClick: false,
+                didOpen: () => { Swal.showLoading(); }
             });
 
             fetch(URL_WEB_APP, {
@@ -754,26 +675,11 @@ async function simpanAbsensi() {
                 if (response.result === 'success') {
                     Swal.fire('Berhasil!', `Presensi ${kelas} berhasil disimpan. (Jarak: ${Math.round(jarakMeter)}m)`, 'success');
                     muatLaporanHariIni(true);
-                    
-                    // Reset Tabel dan Dropdown
-                    document.getElementById('kelas').value = "";
-                    document.querySelector('#attendance-table tbody').innerHTML = `<tr><td colspan="4"><div class="empty-state"><i class="fa-solid fa-users-slash"></i><p>Silakan pilih Kelas / Rombel terlebih dahulu.</p></div></td></tr>`;
-                    
-                    // PERBAIKAN VISUAL: Kembalikan tombol ke mode Biru (jika sebelumnya Oranye karena Edit)
-                    btn.innerHTML = '<i class="fa-solid fa-floppy-disk"></i> Simpan Presensi Ke Database';
-                    btn.style.backgroundColor = 'var(--primary)';
-
                 } else {
                     Swal.fire('Gagal!', response.message, 'error');
-                    btn.innerHTML = originalText;
                 }
-            }).catch(err => {
-                Swal.fire('Error', 'Gagal menyimpan.', 'error');
-                btn.innerHTML = originalText;
-            })
-            .finally(() => { 
-                btn.disabled = false; 
-            });
+            }).catch(err => Swal.fire('Error', 'Gagal menyimpan.', 'error'))
+            .finally(() => { btn.disabled = false; btn.innerHTML = originalText; });
         },
         (error) => {
             Swal.fire('Gagal Mendapatkan Lokasi', 'Pastikan izin lokasi (GPS) pada browser/HP diaktifkan untuk situs ini.', 'error');
@@ -792,10 +698,10 @@ function muatLaporanHariIni(isSilent = false) {
         document.getElementById('today-summary-container').innerHTML = `<div class="empty-state" style="padding: 20px;"><i class="fa-solid fa-spinner fa-spin"></i></div>`;
     }
 
-fetch(URL_WEB_APP, {
+    fetch(URL_WEB_APP, {
         method: 'POST', 
         headers: { 'Content-Type': 'text/plain;charset=utf-8' },
-        body: JSON.stringify({ action: "get_today_summary", api_key: "KODE_RAHASIA_ALHAYAT_2026", tanggal: document.getElementById('tanggal').value })
+        body: JSON.stringify({ action: "get_today_summary", tanggal: document.getElementById('tanggal').value })
     })
     .then(res => res.json())
     .then(response => {
@@ -846,13 +752,10 @@ function muatRekapData() {
     btn.disabled = true;
     btn.innerHTML = '<i class="fa-solid fa-spinner fa-spin"></i> Mengambil...';
 
-fetch(URL_WEB_APP, {
-        method: 'POST', 
-        headers: { 'Content-Type': 'text/plain;charset=utf-8' },
-        body: JSON.stringify({ action: "get_rekap", api_key: "KODE_RAHASIA_ALHAYAT_2026", kelas, bulan, tahun })
-    })
-	
-	.then(res => res.json()).then(response => {
+    fetch(URL_WEB_APP, {
+        method: 'POST', headers: { 'Content-Type': 'text/plain;charset=utf-8' },
+        body: JSON.stringify({ action: "get_rekap", kelas, bulan, tahun })
+    }).then(res => res.json()).then(response => {
         if (response.result === 'success') olahDanTampilkanRekap(kelas, response.data);
         else Swal.fire('Gagal!', response.message, 'error');
     }).catch(err => Swal.fire('Error', 'Gagal dari Sheets.', 'error'))
@@ -969,7 +872,7 @@ function exportRekapExcel() {
 function resetDatabase() {
     Swal.fire({
         title: 'PERINGATAN KRITIS!',
-        text: "Apakah Anda yakin ingin MENGHAPUS SELURUH DATA (Master Siswa & Presensi) dari database ? Tindakan ini TIDAK BISA dibatalkan!",
+        text: "Apakah Anda yakin ingin MENGHAPUS SELURUH DATA (Master Siswa & Presensi) dari database Google Sheets? Tindakan ini TIDAK BISA dibatalkan!",
         icon: 'warning',
         showCancelButton: true,
         confirmButtonColor: '#d33',
@@ -1001,10 +904,10 @@ function resetDatabase() {
                         didOpen: () => { Swal.showLoading(); }
                     });
 
-                   fetch(URL_WEB_APP, {
+                    fetch(URL_WEB_APP, {
                         method: 'POST',
                         headers: { 'Content-Type': 'text/plain;charset=utf-8' },
-                        body: JSON.stringify({ action: "reset_database", api_key: "KODE_RAHASIA_ALHAYAT_2026" })
+                        body: JSON.stringify({ action: "reset_database" })
                     })
                     .then(res => res.json())
                     .then(response => {

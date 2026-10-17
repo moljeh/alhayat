@@ -32,16 +32,14 @@
     <script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
 	
 	
-<!-- SCRIPT ANTI KEDIP (Menghilangkan Flash Form Login) -->
+	<!-- SCRIPT ANTI KEDIP (Menghilangkan Flash Form Login) -->
     <script>
-        // Menggunakan nama kunci yang disamarkan
-        if (sessionStorage.getItem('_admin_auth_token')) {
+        if (sessionStorage.getItem('adminLoggedIn')) {
             const style = document.createElement('style');
             style.innerHTML = '#login-wrapper { display: none !important; }';
             document.head.appendChild(style);
         }
     </script>
-	
 </head>
 	
 	

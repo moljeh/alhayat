@@ -4,7 +4,12 @@ const URL_WEB_APP = "https://script.google.com/macros/s/AKfycbxULMqYGSLb58eVXLsB
 let SCHOOL_LAT, SCHOOL_LNG, WAKTU_MULAI, WAKTU_SELESAI, MAX_RADIUS_METERS;
 let masterSiswaList = [];
 
-
+// Setup Tanggal Hari Ini
+const today = new Date();
+const year = today.getFullYear();
+const month = String(today.getMonth() + 1).padStart(2, '0');
+const day = String(today.getDate()).padStart(2, '0');
+document.getElementById('tanggal').value = `${year}-${month}-${day}`;
 
 // Memastikan jika tanggal berubah, tabel otomatis me-refresh data
 document.getElementById('tanggal').addEventListener('change', filterDataAbsensi);
@@ -30,68 +35,9 @@ function notifMini(title, text, icon) {
 }
 
 document.addEventListener('DOMContentLoaded', function() {
-    // Cek apakah guru sudah memasukkan PIN di sesi ini
-    if (sessionStorage.getItem('_guru_auth_valid')) {
-        inisialisasiAplikasiGuru();
-    } else {
-        memintaKodeAksesGuru();
-    }
+    inisialisasiAplikasiGuru();
 });
 
-// FUNGSI BARU: Gerbang Keamanan PIN Guru
-// FUNGSI BARU: Gerbang Keamanan PIN Guru (Desain Modern)
-function memintaKodeAksesGuru() {
-    Swal.fire({
-        // Menambahkan ikon gembok dan mengatur ukuran font judul
-        title: '<i class="fa-solid fa-lock" style="color: #3b82f6; font-size: 2.2rem; margin-bottom: 10px; display: block;"></i><span style="font-size: 1.25rem; font-weight: 700; color: #0f172a;">Akses Terkunci</span>',
-        html: '<span style="font-size: 0.85rem; color: #64748b;">Masukkan 6 digit PIN untuk presensi.</span>',
-        input: 'password',
-        inputPlaceholder: '••••••',
-        width: '320px', // Membuat popup jadi lebih kecil dan ramping
-        padding: '1.5em 1em 2em', // Mengatur jarak luar agar pas
-        background: '#ffffff',
-        backdrop: 'rgba(15, 23, 42, 0.85)', // Warna background belakang lebih gelap & elegan
-        allowOutsideClick: false,
-        allowEscapeKey: false,
-        showCancelButton: false,
-        confirmButtonText: 'Buka Portal',
-        confirmButtonColor: '#3b82f6',
-        
-// Memodifikasi kotak input teks PIN
-        inputAttributes: {
-            maxlength: 6,
-            autocapitalize: 'off',
-            autocorrect: 'off',
-            inputmode: 'numeric', // Otomatis memunculkan keyboard angka di HP
-            pattern: '[0-9]*', // Syarat standar HTML untuk form angka
-            oninput: "this.value = this.value.replace(/[^0-9]/g, '')", // Trik agar jika diketik huruf di keyboard laptop, otomatis terhapus
-            // CSS langsung untuk input: teks di tengah, font besar, huruf berjarak
-            style: 'text-align: center; letter-spacing: 12px; font-size: 1.5rem; font-weight: bold; border-radius: 12px; padding: 12px; box-shadow: none;'
-        },
-        
-        // Menambahkan class CSS khusus agar bisa di-custom di file style.css
-        customClass: {
-            popup: 'swal-modern-popup',
-            confirmButton: 'swal-modern-btn',
-            input: 'swal-modern-input'
-        },
-        
-        inputValidator: (value) => {
-            if (!value) {
-                return 'PIN tidak boleh kosong!';
-            }
-            // GANTI PIN DI SINI (Contoh: 123456)
-            if (value !== '112233') {
-                return 'PIN salah! Akses ditolak.';
-            }
-        }
-    }).then((result) => {
-        if (result.isConfirmed) {
-            sessionStorage.setItem('_guru_auth_valid', 'true');
-            inisialisasiAplikasiGuru();
-        }
-    });
-}
 // ==========================================
 // RUMUS MENGHITUNG JARAK (HAVERSINE)
 // ==========================================
@@ -112,55 +58,20 @@ function hitungJarak(lat1, lon1, lat2, lon2) {
 // ==========================================
 // INISIALISASI & TARIK DATA
 // ==========================================
-async function inisialisasiAplikasiGuru() {
-    // 1. Munculkan halaman utama yang disembunyikan sebelumnya
-    const halamanUtama = document.getElementById('halaman-utama');
-    if (halamanUtama) {
-        halamanUtama.style.display = 'block';
-    }
-
+function inisialisasiAplikasiGuru() {
     Swal.fire({
         title: '<span style="font-size: 1.1rem;">Menyiapkan Data...</span>',
-        html: '<span style="font-size: 0.85rem; color: #64748b;">Mengecek waktu & sinkronisasi ke server.</span>',
+        html: '<span style="font-size: 0.85rem; color: #64748b;">Menghubungkan ke server sekolah.</span>',
         allowOutsideClick: false,
         showConfirmButton: false,
         width: '300px', padding: '1.5em',
         didOpen: () => { Swal.showLoading(); }
     });
 
-    // AMBIL TANGGAL ASLI DARI SERVER INTERNET
-    let year, month, day;
-    try {
-        const controller = new AbortController();
-        const timeoutId = setTimeout(() => controller.abort(), 5000); 
-
-        const res = await fetch('https://timeapi.io/api/Time/current/zone?timeZone=Asia/Jakarta', { signal: controller.signal });
-        
-        clearTimeout(timeoutId);
-        if (res.ok) {
-            const data = await res.json();
-            // Ambil langsung angka tanggal dari API (Anti-geser zona waktu)
-            year = data.year;
-            month = String(data.month).padStart(2, '0');
-            day = String(data.day).padStart(2, '0');
-        }
-    } catch (e) {
-        console.warn("Gagal mengecek waktu online, menggunakan tanggal lokal.");
-        const today = new Date();
-        year = today.getFullYear();
-        month = String(today.getMonth() + 1).padStart(2, '0');
-        day = String(today.getDate()).padStart(2, '0');
-    }
-    
-    // Terapkan ke form tanggal
-    document.getElementById('tanggal').value = `${year}-${month}-${day}`;
-
-    // Lanjutkan mengambil pengaturan dari Google Sheets
-    // SISIPKAN API KEY DI SINI!
     fetch(URL_WEB_APP, {
         method: 'POST',
         headers: { 'Content-Type': 'text/plain;charset=utf-8' },
-        body: JSON.stringify({ action: "get_pengaturan", api_key: "KODE_RAHASIA_ALHAYAT_2026" })
+        body: JSON.stringify({ action: "get_pengaturan" })
     })
     .then(res => res.json())
     .then(response => {
@@ -190,7 +101,7 @@ function tarikDataSiswa() {
     fetch(URL_WEB_APP, {
         method: 'POST',
         headers: { 'Content-Type': 'text/plain;charset=utf-8' },
-       body: JSON.stringify({ action: "get_master", api_key: "KODE_RAHASIA_ALHAYAT_2026" })
+        body: JSON.stringify({ action: "get_master" })
     })
     .then(res => res.json())
     .then(response => {
@@ -249,18 +160,12 @@ function filterDataAbsensi() {
     // Munculkan indikator loading di dalam tabel
     tbody.innerHTML = `<tr><td colspan="3" class="text-center"><i class="fa-solid fa-spinner fa-spin" style="font-size:1.5rem; color:var(--primary); margin-bottom:10px;"></i><br><span style="font-size:0.85rem; color:#64748b;">Mengecek riwayat absen hari ini...</span></td></tr>`;
 
-// Mencegah error jika tanggal dihapus (undefined)
-    const parts = tanggalTerpilih ? tanggalTerpilih.split("-") : ["", ""];
+    // Tarik data dari server untuk mengecek apakah kelas ini sudah diabsen hari ini
+    const parts = tanggalTerpilih.split("-");
     
     fetch(URL_WEB_APP, {
         method: 'POST', headers: { 'Content-Type': 'text/plain;charset=utf-8' },
-        body: JSON.stringify({ 
-            action: "get_rekap", 
-            api_key: "KODE_RAHASIA_ALHAYAT_2026", 
-            kelas: kelasTerpilih, 
-            bulan: parts[1] || "", 
-            tahun: parts[0] || "" 
-        })
+        body: JSON.stringify({ action: "get_rekap", kelas: kelasTerpilih, bulan: parts[1], tahun: parts[0] })
     })
     .then(res => res.json())
     .then(response => {
@@ -286,8 +191,8 @@ function filterDataAbsensi() {
                     <strong>${siswa.nama}</strong><br>
                     <code style="font-size:0.75rem; color:#64748b;">${siswa.nis}</code>
                 </td>
-               <td>
-                    <select class="status-select" name="status_${index}" data-nis="${siswa.nis}" data-nama="${siswa.nama}" onchange="updateWarnaStatus(this)">
+                <td>
+                    <select class="status-select" name="status_${index}" onchange="updateWarnaStatus(this)">
                         <option value="Hadir" ${statusTersimpan==='Hadir'?'selected':''}>Hadir</option>
                         <option value="Sakit" ${statusTersimpan==='Sakit'?'selected':''}>Sakit</option>
                         <option value="Izin" ${statusTersimpan==='Izin'?'selected':''}>Izin</option>
@@ -317,11 +222,10 @@ function filterDataAbsensi() {
         tbody.innerHTML = `<tr><td colspan="3" class="text-center text-muted" style="color:red;">Gagal terhubung ke database. Silakan pilih kelas kembali.</td></tr>`;
     });
 }
-
 // ==========================================
 // KIRIM DATA ABSENSI KE GOOGLE SHEETS
 // ==========================================
-async function simpanAbsensi() {
+function simpanAbsensi() {
     const kelas = document.getElementById('kelas').value;
     const tanggal = document.getElementById('tanggal').value;
     const barisSiswa = document.querySelectorAll('#attendance-table tbody tr');
@@ -331,39 +235,13 @@ async function simpanAbsensi() {
         return; 
     }
 
-    // 1. MUNCULKAN LOADING LEBIH AWAL AGAR TOMBOL TIDAK BISA DI-SPAM KLIK
-    Swal.fire({
-        title: '<span style="font-size: 1.1rem;">Memproses...</span>',
-        html: '<span style="font-size: 0.85rem; color: #64748b;">Mengecek waktu & sinkronisasi lokasi...</span>',
-        allowOutsideClick: false, showConfirmButton: false,
-        width: '300px', padding: '1.5em',
-        didOpen: () => { Swal.showLoading(); }
-    });
-
-    // 2. CEK WAKTU REAL-TIME DENGAN BATAS 5 DETIK (MENGGUNAKAN TIMEAPI.IO)
-    let currentTime = "";
-    try {
-        const controller = new AbortController();
-        const timeoutId = setTimeout(() => controller.abort(), 5000); 
-        
-        // Memanggil server waktu yang stabil
-        const res = await fetch('https://timeapi.io/api/Time/current/zone?timeZone=Asia/Jakarta', { signal: controller.signal });
-        clearTimeout(timeoutId);
-        
-        if (res.ok) {
-            const data = await res.json();
-            currentTime = data.time; // Langsung comot string jam tanpa di-parse Date() yang rawan bergeser
-        }
-    } catch (e) {
-        console.warn("API lambat/gagal, beralih ke jam lokal.");
-        const now = new Date();
-        const currentHours = String(now.getHours()).padStart(2, '0');
-        const currentMinutes = String(now.getMinutes()).padStart(2, '0');
-        currentTime = `${currentHours}:${currentMinutes}`;
-    }
+    const now = new Date();
+    const currentHours = String(now.getHours()).padStart(2, '0');
+    const currentMinutes = String(now.getMinutes()).padStart(2, '0');
+    const currentTime = `${currentHours}:${currentMinutes}`;
 
     if (currentTime < WAKTU_MULAI || currentTime > WAKTU_SELESAI) {
-        notifMini('Waktu Ditutup', `Waktu server menunjukkan jam <b>${currentTime}</b>.<br>Presensi hanya bisa dikirim pukul <b>${WAKTU_MULAI}</b> s/d <b>${WAKTU_SELESAI}</b>.`, 'error');
+        notifMini('Waktu Ditutup', `Sekarang jam <b>${currentTime}</b>.<br>Presensi hanya bisa dikirim antara pukul <b>${WAKTU_MULAI}</b> s/d <b>${WAKTU_SELESAI}</b>.`, 'error');
         return;
     }
 
@@ -372,7 +250,14 @@ async function simpanAbsensi() {
         return;
     }
 
-    // 3. AMBIL LOKASI DAN KIRIM KE DATABASE
+    Swal.fire({
+        title: '<span style="font-size: 1.1rem;">Memproses...</span>',
+        html: '<span style="font-size: 0.85rem; color: #64748b;">Mengirim data mohon tunggu.</span>',
+        allowOutsideClick: false, showConfirmButton: false,
+        width: '300px', padding: '1.5em',
+        didOpen: () => { Swal.showLoading(); }
+    });
+
     navigator.geolocation.getCurrentPosition(
         (position) => {
             const userLat = position.coords.latitude;
@@ -386,42 +271,26 @@ async function simpanAbsensi() {
 
             let hasilAbsensi = [];
             barisSiswa.forEach((tr, index) => {
-                const selectElement = tr.querySelector(`select[name="status_${index}"]`);
                 hasilAbsensi.push({ 
-                    nis: selectElement.getAttribute('data-nis'), 
-                    nama: selectElement.getAttribute('data-nama'), 
-                    status: selectElement.value 
+                    nis: tr.querySelector('code').innerText, 
+                    nama: tr.querySelectorAll('strong')[1].innerText, 
+                    status: tr.querySelector(`select[name="status_${index}"]`).value 
                 });
             });
 
             const koordinatTersimpan = userLat.toFixed(6) + ", " + userLng.toFixed(6);
-            
-            // 4. MEMBUAT PAYLOAD DENGAN KUNCI RAHASIA API KEY
-            const payload = { 
-                action: "simpan_absensi", 
-                api_key: "KODE_RAHASIA_ALHAYAT_2026", // Wajib ada agar tidak ditolak server
-                kelas, 
-                tanggal, 
-                koordinat: koordinatTersimpan, 
-                data: hasilAbsensi 
-            };
+            const payload = { action: "simpan_absensi", kelas, tanggal, koordinat: koordinatTersimpan, data: hasilAbsensi };
 
             fetch(URL_WEB_APP, {
                 method: 'POST', headers: { 'Content-Type': 'text/plain;charset=utf-8' },
                 body: JSON.stringify(payload)
             }).then(res => res.json()).then(response => {
                 if (response.result === 'success') {
+                    // Notifikasi sukses yang ramping
                     notifMini('Terkirim!', `Presensi ${kelas} berhasil diserahkan.<br><br><b>Jarak Anda: ${Math.round(jarakMeter)} m</b>`, 'success');
                     
                     document.getElementById('kelas').value = "";
                     document.querySelector('#attendance-table tbody').innerHTML = `<tr><td colspan="3" class="text-center text-muted">Silakan pilih kelas terlebih dahulu.</td></tr>`;
-                    
-                    // Kembalikan warna dan teks tombol ke mode awal (Biru)
-                    const btnSimpan = document.querySelector('.btn-primary');
-                    if (btnSimpan) {
-                        btnSimpan.innerHTML = '<i class="fa-solid fa-paper-plane"></i> Kirim Presensi Sekarang';
-                        btnSimpan.style.backgroundColor = 'var(--primary)';
-                    }
                 } else {
                     notifMini('Gagal!', response.message, 'error');
                 }
