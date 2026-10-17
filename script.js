@@ -877,7 +877,7 @@ function exportRekapExcel() {
 function resetDatabase() {
     Swal.fire({
         title: 'PERINGATAN KRITIS!',
-        text: "Apakah Anda yakin ingin MENGHAPUS SELURUH DATA (Master Siswa & Presensi) dari database Google Sheets? Tindakan ini TIDAK BISA dibatalkan!",
+        text: "Apakah Anda yakin ingin MENGHAPUS SELURUH DATA (Master Siswa & Presensi) dari database ? Tindakan ini TIDAK BISA dibatalkan!",
         icon: 'warning',
         showCancelButton: true,
         confirmButtonColor: '#d33',
