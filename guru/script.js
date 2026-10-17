@@ -1,5 +1,5 @@
 // PASTIKAN URL INI SAMA DENGAN URL DI HALAMAN ADMIN
-const URL_WEB_APP = "https://script.google.com/macros/s/AKfycbwrR_hxVSxMJ8Xk7yC12_K-2Qr0ZsiKpc5vjojWNY1ax0NuXKZtkcuuO1BRV9obiRI/exec";
+const URL_WEB_APP = "https://script.google.com/macros/s/AKfycby6HUdUAosafDge09SNbYoOGYy0IhUJ4gVfzUdxH8aPlDDPy8u1T2ARP1d1jI8gmAKO/exec";
 
 let SCHOOL_LAT, SCHOOL_LNG, WAKTU_MULAI, WAKTU_SELESAI, MAX_RADIUS_METERS;
 let STATUS_LOKASI = "ON";
