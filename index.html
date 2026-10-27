@@ -33,13 +33,15 @@
 	
 	
 	<!-- SCRIPT ANTI KEDIP (Menghilangkan Flash Form Login) -->
-    <script>
-        if (sessionStorage.getItem('adminLoggedIn')) {
-            const style = document.createElement('style');
-            style.innerHTML = '#login-wrapper { display: none !important; }';
-            document.head.appendChild(style);
-        }
-    </script>
+    <!-- SCRIPT ANTI KEDIP (Menghilangkan Flash Form Login) -->
+<script>
+    // Menggunakan localStorage agar status login bertahan meski browser ditutup
+    if (localStorage.getItem('adminLoggedIn')) {
+        const style = document.createElement('style');
+        style.innerHTML = '#login-wrapper { display: none !important; }';
+        document.head.appendChild(style);
+    }
+</script>
 </head>
 	
 	
@@ -173,10 +175,21 @@
                 </div>
 
                 <div class="panel">
-                    <div class="panel-header">
-                        <h3><i class="fa-solid fa-clipboard-check" style="color: var(--success);"></i> Laporan Presensi Hari Ini</h3>
-                        <button class="btn-template" onclick="muatLaporanHariIni()" style="padding: 6px 12px; font-size: 0.75rem;"><i class="fa-solid fa-rotate"></i> Refresh Data</button>
-                    </div>
+                  
+				  
+				  <div class="panel-header">
+    <h3><i class="fa-solid fa-clipboard-check" style="color: var(--success);"></i> Laporan Presensi Hari Ini</h3>
+    <div style="display: flex; gap: 8px;">
+        <button class="btn-template" onclick="shareToWhatsApp()" style="padding: 6px 12px; font-size: 0.75rem; background-color: #25D366; border: 1px solid #20b558;">
+            <i class="fa-brands fa-whatsapp"></i> Share WA
+        </button>
+        <button class="btn-template" onclick="muatLaporanHariIni()" style="padding: 6px 12px; font-size: 0.75rem;">
+            <i class="fa-solid fa-rotate"></i> Refresh Data
+        </button>
+    </div>
+</div>
+				  
+				  
                     <div id="today-summary-container">
                         <div class="empty-state" style="padding: 20px;">
                             <i class="fa-solid fa-spinner fa-spin"></i>

@@ -10,6 +10,7 @@ let STATUS_WAKTU = "ON";
 
 let masterSiswaList = [];
 let rekapSiswaHasil = [];
+let globalDataSummary = null; // Variabel baru untuk menampung data yang akan di-share ke WA
 
 const options = { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' };
 document.getElementById('current-date').innerText = new Date().toLocaleDateString('id-ID', options);
@@ -26,8 +27,8 @@ document.getElementById('tanggal').addEventListener('change', filterDataAbsensi)
 // PENANGANAN STATUS LOGIN (SESSION)
 // ==========================================
 document.addEventListener('DOMContentLoaded', function() {
-    // Mengecek apakah sudah login di sesi browser ini
-    if (!sessionStorage.getItem('adminLoggedIn')) {
+    // Mengecek apakah sudah login di memori permanen browser (localStorage)
+    if (!localStorage.getItem('adminLoggedIn')) {
         document.getElementById('login-wrapper').style.display = 'flex';
     } else {
         document.getElementById('login-wrapper').style.display = 'none';
@@ -61,14 +62,14 @@ function prosesLogin() {
         body: JSON.stringify({ action: "login", username: user, password: pass })
     })
     .then(res => res.json())
-
-.then(response => {
+    .then(response => {
         if (response.result === 'success') {
-            sessionStorage.setItem('adminLoggedIn', 'true');
+            // PERUBAHAN DISINI: Simpan sesi login ke localStorage agar permanen
+            localStorage.setItem('adminLoggedIn', 'true');
             document.getElementById('login-wrapper').style.display = 'none';
             Swal.fire({ title: 'Berhasil', text: 'Selamat datang di Panel Admin', icon: 'success', timer: 1500, showConfirmButton: false });
             inisialisasiAplikasiAdmin();
-} else {
+        } else {
             // PAKSA LEPAS FOKUS SECARA SPESIFIK
             document.getElementById('login-username').blur();
             document.getElementById('login-password').blur();
@@ -89,7 +90,6 @@ function prosesLogin() {
             });
         }
     })
-
     .catch(err => {
         // 3. JIKA KONEKSI TERPUTUS SAAT LOADING / SERVER GAGAL
         Swal.fire('Koneksi Terputus', 'Gagal menghubungi server database Google Sheets. Periksa stabilitas internet Anda.', 'error');
@@ -110,7 +110,8 @@ function logoutAdmin() {
         cancelButtonText: 'Batal'
     }).then((result) => {
         if (result.isConfirmed) {
-            sessionStorage.removeItem('adminLoggedIn');
+            // PERUBAHAN DISINI: Hapus kunci login dari localStorage
+            localStorage.removeItem('adminLoggedIn');
             location.reload(); // Refresh halaman akan otomatis kembali ke form login
         }
     });
@@ -724,6 +725,7 @@ function muatLaporanHariIni(isSilent = false) {
 }
 
 function renderLaporanHariIni(dataSummary) {
+    globalDataSummary = dataSummary; // BARIS YANG DITAMBAHKAN: Menyimpan data laporan ke variabel global
     const container = document.getElementById('today-summary-container');
     const daftarKelas = [...new Set(masterSiswaList.map(s => s.kelas))].sort();
     if (daftarKelas.length === 0) { container.innerHTML = '<p style="color: var(--text-muted); text-align:center;">Belum ada master kelas.</p>'; return; }
@@ -1009,4 +1011,64 @@ function hitungJarak(lat1, lon1, lat2, lon2) {
     const c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1-a));
 
     return R * c; // Hasil dalam meter
+}
+
+// ==========================================
+// FUNGSI SHARE LAPORAN KE WHATSAPP (UPDATE)
+// ==========================================
+function shareToWhatsApp() {
+    // Memeriksa apakah data laporan dan data kelas sudah ada
+    if (!globalDataSummary || masterSiswaList.length === 0) {
+        Swal.fire('Peringatan', 'Data laporan belum dimuat atau kelas masih kosong!', 'warning');
+        return;
+    }
+
+    // Mendapatkan tanggal hari ini sesuai dengan format bahasa Indonesia
+    const options = { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' };
+    const tanggalHariIni = new Date().toLocaleDateString('id-ID', options);
+    
+    // 1. Header Pesan WA, Tanggal, dan Deskripsi
+    let text = `*📊 LAPORAN PRESENSI HARIAN*\n*🏫 TK/SD ISLAM AL-HAYAT*\n\n`;
+    text += `📅 *Tanggal:* ${tanggalHariIni}\n`;
+    text += `📝 *Keterangan:* Berikut adalah rekapitulasi status pengisian presensi siswa/santri hari ini. Bagi kelas yang belum, mohon segera melengkapi data presensi.\n\n`;
+
+    // Mengambil daftar nama-nama kelas yang tersedia
+    const daftarKelas = [...new Set(masterSiswaList.map(s => s.kelas))].sort();
+    
+    let sudahAbsen = [];
+    let belumAbsen = [];
+
+    // Mengelompokkan kelas menjadi "Sudah Absen" dan "Belum Absen"
+    daftarKelas.forEach(kelas => {
+        const stat = globalDataSummary[kelas];
+        if (stat && stat.submitted) {
+            let rincian = `H: ${stat.hadir}`;
+            if(stat.sakit > 0) rincian += `, S: ${stat.sakit}`;
+            if(stat.izin > 0) rincian += `, I: ${stat.izin}`;
+            if(stat.alpa > 0) rincian += `, A: ${stat.alpa}`;
+            sudahAbsen.push(`✅ *${kelas}* (${rincian})`);
+        } else {
+            belumAbsen.push(`❌ *${kelas}*`);
+        }
+    });
+
+    // 2. Menggabungkan teks untuk grup Sudah Absen
+    text += `*✅ SUDAH MENGISI ABSENSI:*\n`;
+    text += sudahAbsen.length > 0 ? sudahAbsen.join('\n') : '- Belum ada kelas yang absen';
+    text += `\n\n`;
+
+    // 3. Menggabungkan teks untuk grup Belum Absen
+    text += `*❌ BELUM MENGISI ABSENSI:*\n`;
+    text += belumAbsen.length > 0 ? belumAbsen.join('\n') : '- Semua kelas sudah absen';
+    text += `\n\n`;
+
+    // 4. Penutup Pesan
+    text += `_Terima kasih atas kerja samanya._\n`;
+    text += `_Sistem Informasi EduAbsensi_`;
+
+    // Encode teks agar aman dikirim melalui URL
+    const encodedText = encodeURIComponent(text);
+    
+    // Membuka tab baru yang mengarah ke link WhatsApp dengan teks yang sudah di-format
+    window.open(`https://api.whatsapp.com/send?text=${encodedText}`, '_blank');
 }

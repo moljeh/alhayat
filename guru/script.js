@@ -30,8 +30,8 @@ function notifMini(title, text, icon) {
 }
 
 document.addEventListener('DOMContentLoaded', function() {
-    // Cek apakah guru sudah memasukkan PIN di sesi ini
-    if (sessionStorage.getItem('_guru_auth_valid')) {
+    // Cek apakah guru sudah memasukkan PIN di penyimpanan permanen (localStorage)
+    if (localStorage.getItem('_guru_auth_valid')) {
         inisialisasiAplikasiGuru();
     } else {
         memintaKodeAksesGuru();
@@ -70,14 +70,16 @@ function memintaKodeAksesGuru() {
             confirmButton: 'swal-modern-btn',
             input: 'swal-modern-input'
         },
-        inputValidator: (value) => {
+
+inputValidator: (value) => {
             if (!value) return 'PIN tidak boleh kosong!';
             // 'MTEyMjMz' adalah 112233 yang sudah di-enkripsi Base64 agar tidak bisa diintip siswa
             if (btoa(value) !== 'MTEyMjMz') return 'PIN salah! Akses ditolak.';
         }
     }).then((result) => {
         if (result.isConfirmed) {
-            sessionStorage.setItem('_guru_auth_valid', 'true');
+            // PERUBAHAN: Simpan status auth secara permanen di browser
+            localStorage.setItem('_guru_auth_valid', 'true');
             inisialisasiAplikasiGuru();
         }
     });
