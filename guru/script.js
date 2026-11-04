@@ -43,7 +43,7 @@ document.addEventListener('DOMContentLoaded', function() {
 // ==========================================
 function memintaKodeAksesGuru() {
     Swal.fire({
-        title: '<i class="fa-solid fa-lock" style="color: #3b82f6; font-size: 2.2rem; margin-bottom: 10px; display: block;"></i><span style="font-size: 1.25rem; font-weight: 700; color: #0f172a;">Akses Terkunci</span>',
+        title: '<i class="fa-solid fa-lock" style="color: #059669; font-size: 2.2rem; margin-bottom: 10px; display: block;"></i><span style="font-size: 1.25rem; font-weight: 700; color: #0f172a;">Akses Terkunci</span>',
         html: '<span style="font-size: 0.85rem; color: #64748b;">Masukkan 6 digit PIN untuk presensi.</span>',
         input: 'password',
         inputPlaceholder: '••••••',
@@ -55,7 +55,7 @@ function memintaKodeAksesGuru() {
         allowEscapeKey: false,
         showCancelButton: false,
         confirmButtonText: 'Buka Portal',
-        confirmButtonColor: '#3b82f6',
+        confirmButtonColor: '#059669',
         inputAttributes: {
             maxlength: 6,
             autocapitalize: 'off',
@@ -64,23 +64,16 @@ function memintaKodeAksesGuru() {
             pattern: '[0-9]*', 
             oninput: "this.value = this.value.replace(/[^0-9]/g, '')", 
             style: 'text-align: center; letter-spacing: 12px; font-size: 1.5rem; font-weight: bold; border-radius: 12px; padding: 12px; box-shadow: none;'
-        },
-        customClass: {
-            popup: 'swal-modern-popup',
-            confirmButton: 'swal-modern-btn',
-            input: 'swal-modern-input'
-        },
-
-inputValidator: (value) => {
-            if (!value) return 'PIN tidak boleh kosong!';
-            // 'MTEyMjMz' adalah 112233 yang sudah di-enkripsi Base64 agar tidak bisa diintip siswa
-            if (btoa(value) !== 'MTEyMjMz') return 'PIN salah! Akses ditolak.';
         }
     }).then((result) => {
         if (result.isConfirmed) {
-            // PERUBAHAN: Simpan status auth secara permanen di browser
-            localStorage.setItem('_guru_auth_valid', 'true');
-            inisialisasiAplikasiGuru();
+            // 'MTEyMjMz' adalah 112233 yang sudah di-enkripsi Base64
+            if (btoa(result.value) === 'MTEyMjMz') {
+                localStorage.setItem('_guru_auth_valid', 'true');
+                inisialisasiAplikasiGuru();
+            } else {
+                Swal.fire('Akses Ditolak', 'PIN yang Anda masukkan salah.', 'error').then(() => memintaKodeAksesGuru());
+            }
         }
     });
 }
@@ -106,10 +99,9 @@ function hitungJarak(lat1, lon1, lat2, lon2) {
 // INISIALISASI & TARIK DATA
 // ==========================================
 async function inisialisasiAplikasiGuru() {
-    // Memunculkan halaman utama yang disembunyikan agar tidak blank/berkedip
     const halamanUtama = document.getElementById('halaman-utama');
     if (halamanUtama) {
-        halamanUtama.style.display = 'block';
+        halamanUtama.style.display = 'flex';
     }
 
     Swal.fire({
@@ -121,7 +113,6 @@ async function inisialisasiAplikasiGuru() {
         didOpen: () => { Swal.showLoading(); }
     });
 
-    // AMBIL TANGGAL ASLI DARI SERVER INTERNET (ANTI-GESER)
     let year, month, day;
     try {
         const controller = new AbortController();
@@ -146,7 +137,7 @@ async function inisialisasiAplikasiGuru() {
     
     document.getElementById('tanggal').value = `${year}-${month}-${day}`;
 
-    // Panggil fungsi untuk menampilkan kelas yang sudah absen
+    // Panggil fungsi untuk menampilkan kelas yang sudah dan belum absen
     muatInfoAbsensiHariIni(); 
 
     // Lanjutkan mengambil pengaturan dari Google Sheets (Wajib ada API Key)
@@ -156,8 +147,7 @@ async function inisialisasiAplikasiGuru() {
         body: JSON.stringify({ action: "get_pengaturan", api_key: "KODE_RAHASIA_ALHAYAT_2026" })
     })
     .then(res => res.json())
-	
-   .then(response => {
+    .then(response => {
         if (response.result === 'success') {
             SCHOOL_LAT = response.data.lat;
             SCHOOL_LNG = response.data.lng;
@@ -213,7 +203,15 @@ function updateDropdownKelas() {
     const selectKelas = document.getElementById('kelas');
     selectKelas.innerHTML = '<option value="">-- Pilih Kelas Anda --</option>';
     
-    const daftarKelas = [...new Set(masterSiswaList.map(s => s.kelas))].sort();
+    // Urutkan dropdown secara natural (SD di atas, TK di bawah)
+    const daftarKelas = [...new Set(masterSiswaList.map(s => s.kelas))].sort((a, b) => {
+        const isATK = a.toUpperCase().includes('TK');
+        const isBTK = b.toUpperCase().includes('TK');
+        if (isATK && !isBTK) return 1;
+        if (!isATK && isBTK) return -1;
+        return a.localeCompare(b, 'id', { numeric: true });
+    });
+    
     daftarKelas.forEach(k => { selectKelas.appendChild(new Option(k, k)); });
     selectKelas.disabled = false;
 }
@@ -243,7 +241,6 @@ function filterDataAbsensi() {
     
     tbody.innerHTML = `<tr><td colspan="3" class="text-center"><i class="fa-solid fa-spinner fa-spin" style="font-size:1.5rem; color:var(--primary); margin-bottom:10px;"></i><br><span style="font-size:0.85rem; color:#64748b;">Mengecek riwayat absen hari ini...</span></td></tr>`;
 
-    // Mencegah error jika tanggal dihapus 
     const parts = tanggalTerpilih ? tanggalTerpilih.split("-") : ["", ""];
     
     fetch(URL_WEB_APP, {
@@ -332,7 +329,6 @@ async function simpanAbsensi() {
         didOpen: () => { Swal.showLoading(); }
     });
 
-    // --- 1. CEK VALIDASI WAKTU JIKA ON ---
     if (STATUS_WAKTU === "ON") {
         let currentTime = "";
         try {
@@ -360,7 +356,6 @@ async function simpanAbsensi() {
         }
     }
 
-    // --- FUNGSI INTERNAL UNTUK MENGIRIM KE SERVER ---
     const eksekusiSimpanServer = (koordinatTersimpan, jarakMeter = 0) => {
         let hasilAbsensi = [];
         barisSiswa.forEach((tr, index) => {
@@ -389,7 +384,7 @@ async function simpanAbsensi() {
                 let infoJarak = STATUS_LOKASI === "ON" ? `<br><br><b>Jarak Anda: ${Math.round(jarakMeter)} m</b>` : '';
                 notifMini('Terkirim!', `Presensi ${kelas} berhasil diserahkan.${infoJarak}`, 'success');
                 
-                // Refresh otomatis daftar kelas yang sudah absen
+                // Refresh otomatis daftar kelas yang sudah absen di Grid 2x2
                 muatInfoAbsensiHariIni(); 
 
                 document.getElementById('kelas').value = "";
@@ -406,7 +401,6 @@ async function simpanAbsensi() {
         }).catch(err => notifMini('Error', 'Gagal mengirim data. Cek koneksi internet Anda.', 'error'));
     };
 
-    // --- 2. CEK VALIDASI LOKASI JIKA ON ---
     if (STATUS_LOKASI === "ON") {
         if (!navigator.geolocation) {
             notifMini('GPS Tidak Didukung', 'Browser/HP Anda tidak mendukung pendeteksian lokasi.', 'error');
@@ -432,10 +426,10 @@ async function simpanAbsensi() {
             { enableHighAccuracy: true, timeout: 10000, maximumAge: 0 }
         );
     } else {
-        // Jika Validasi Lokasi dimatikan, langsung kirim data tanpa cek GPS
         eksekusiSimpanServer("GPS Dinonaktifkan", 0);
     }
 }
+
 // ==========================================
 // PWA (KHUSUS GURU)
 // ==========================================
@@ -459,14 +453,14 @@ function updateWarnaStatus(selectElement) {
 }
 
 // ==========================================
-// INFO KELAS YANG SUDAH ABSEN HARI INI
+// INFO KELAS YANG SUDAH & BELUM ABSEN (SORT & GRID)
 // ==========================================
 function muatInfoAbsensiHariIni() {
     const tanggalStr = document.getElementById('tanggal').value;
     const container = document.getElementById('today-summary-guru');
     if (!tanggalStr || !container) return;
     
-    container.innerHTML = '<span class="text-muted" style="font-size: 0.85rem;"><i class="fa-solid fa-spinner fa-spin"></i> Memuat data kelas...</span>';
+    container.innerHTML = '<span class="text-muted" style="font-size: 0.85rem; grid-column: span 2; text-align: center;"><i class="fa-solid fa-spinner fa-spin"></i> Memuat data kelas...</span>';
     
     fetch(URL_WEB_APP, {
         method: 'POST',
@@ -481,26 +475,39 @@ function muatInfoAbsensiHariIni() {
         if (response.result === 'success') {
             const dataSummary = response.data;
             let html = '';
-            let adaYangSudah = false;
             
-            // Loop data untuk mencari kelas yang "submitted: true"
-            for (const kelas in dataSummary) {
+            // Urutkan keys: SD diutamakan (diatas), lalu diurutkan angkanya. TK selalu diletakkan paling bawah.
+            const sortedClasses = Object.keys(dataSummary).sort((a, b) => {
+                const isATK = a.toUpperCase().includes('TK');
+                const isBTK = b.toUpperCase().includes('TK');
+                
+                // Jika salah satu TK, turunkan ke bawah
+                if (isATK && !isBTK) return 1;
+                if (!isATK && isBTK) return -1;
+                
+                // Urutkan sisa kelas secara numerikal / natural (contoh: SDI-1, SDI-2, ... SDI-10)
+                return a.localeCompare(b, 'id', { numeric: true });
+            });
+
+            // Loop data yang sudah diurutkan untuk menyusun badge Grid
+            sortedClasses.forEach(kelas => {
                 if (dataSummary[kelas].submitted) {
                     html += `<span class="badge-kelas-selesai"><i class="fa-solid fa-circle-check"></i> ${kelas}</span>`;
-                    adaYangSudah = true;
+                } else {
+                    html += `<span class="badge-kelas-belum"><i class="fa-solid fa-circle-xmark"></i> ${kelas}</span>`;
                 }
-            }
+            });
             
-            if (adaYangSudah) {
-                container.innerHTML = html;
+            if (html === '') {
+                container.innerHTML = '<span class="text-muted" style="font-size: 0.85rem; font-style: italic; grid-column: span 2; text-align: center;">Belum ada data master kelas.</span>';
             } else {
-                container.innerHTML = '<span class="text-muted" style="font-size: 0.85rem; font-style: italic;">Belum ada kelas yang melakukan absensi hari ini.</span>';
+                container.innerHTML = html;
             }
         } else {
-            container.innerHTML = '<span class="text-muted" style="color:red; font-size: 0.85rem;">Gagal memuat info harian.</span>';
+            container.innerHTML = '<span class="text-muted" style="color:red; font-size: 0.85rem; grid-column: span 2; text-align: center;">Gagal memuat info harian.</span>';
         }
     })
     .catch(err => {
-        container.innerHTML = '<span class="text-muted" style="color:red; font-size: 0.85rem;">Koneksi terputus.</span>';
+        container.innerHTML = '<span class="text-muted" style="color:red; font-size: 0.85rem; grid-column: span 2; text-align: center;">Koneksi terputus.</span>';
     });
 }

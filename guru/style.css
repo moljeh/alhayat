@@ -3,7 +3,7 @@
     --primary: #059669; 
     --primary-hover: #047857;
     --primary-light: #d1fae5;
-    --bg-main: #f0fdf4; /* Aksen latar teal/mint sangat lembut */
+    --bg-main: #f0fdf4; 
     --surface: #ffffff;
     --text-dark: #0f172a;
     --text-muted: #475569;
@@ -82,26 +82,60 @@ body { background-color: var(--bg-main); color: var(--text-dark); padding-bottom
 .btn-primary:active { transform: translateY(0); }
 .btn-primary:disabled { background: #94a3b8; box-shadow: none; cursor: not-allowed; transform: none; }
 
-/* Badge Kelas Selesai Absen (Bentuk Pill) */
+/* ==========================================
+   GRID STATUS PRESENSI HARI INI
+   ========================================== */
+.status-grid-container {
+    display: grid;
+    grid-template-columns: repeat(2, 1fr);
+    gap: 12px;
+    align-items: center;
+    justify-content: center;
+}
+
+/* Badge Kelas Selesai Absen (Hijau) */
 .badge-kelas-selesai {
     background: var(--primary-light);
     color: var(--primary-hover);
-    padding: 8px 18px;
+    padding: 10px 14px;
     border-radius: 9999px;
     font-size: 0.85rem;
     font-weight: 700;
     border: 1px solid #a7f3d0;
     display: inline-flex;
     align-items: center;
+    justify-content: center;
     gap: 8px;
     box-shadow: 0 2px 4px rgba(0,0,0,0.02);
     transition: all 0.2s ease;
+    width: 100%;
 }
 .badge-kelas-selesai:hover {
     transform: translateY(-2px);
     box-shadow: 0 4px 6px rgba(5, 150, 105, 0.15);
 }
-.badge-kelas-selesai i { font-size: 0.95rem; }
+
+/* Badge Kelas Belum Absen (Merah) */
+.badge-kelas-belum {
+    background: #fee2e2;
+    color: #991b1b;
+    padding: 10px 14px;
+    border-radius: 9999px;
+    font-size: 0.85rem;
+    font-weight: 600;
+    border: 1px solid #fca5a5;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    gap: 8px;
+    transition: all 0.2s ease;
+    width: 100%;
+}
+.badge-kelas-belum:hover {
+    background: #fecaca;
+    transform: translateY(-2px);
+    box-shadow: 0 4px 6px rgba(220, 38, 38, 0.15);
+}
 
 /* Tabel Responsif */
 .table-responsive { width: 100%; overflow-x: auto; border: 1px solid var(--border); border-radius: 12px; background: var(--surface); }

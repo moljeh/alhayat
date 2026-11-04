@@ -7,7 +7,7 @@
 
     <!-- PWA Settings Khusus Guru -->
     <link rel="manifest" href="manifest.json">
-    <meta name="theme-color" content="#3b82f6">
+    <meta name="theme-color" content="#059669">
     <meta name="mobile-web-app-capable" content="yes">
     <meta name="apple-mobile-web-app-capable" content="yes">
     <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
@@ -27,7 +27,6 @@
     <meta property="og:type" content="website">
     <meta property="og:title" content="EduAbsensi - Portal Guru">
     <meta property="og:description" content="Aplikasi input presensi harian siswa untuk Guru. Dilengkapi dengan verifikasi otomatis sesuai jam dan lokasi sekolah.">
-    <!-- Ganti URL di bawah dengan URL web asli Anda jika sudah online -->
    <meta property="og:image" content="https://alhayat.web.id/guru/asset/logoshare.png">
     <meta property="og:url" content="https://alhayat.web.id/guru/">
 	
@@ -48,8 +47,10 @@
         
         <!-- CARD BARU: INFO ABSENSI HARI INI -->
         <div class="card">
-            <h3 class="card-title"><i class="fa-solid fa-list-check" style="color: var(--primary);"></i> Sudah Absen Hari Ini</h3>
-        <div id="today-summary-guru" style="display: flex; flex-wrap: wrap; gap: 12px;">
+            <h3 class="card-title"><i class="fa-solid fa-list-check" style="color: var(--primary);"></i> Status Presensi Hari Ini</h3>
+            <div id="today-summary-guru" class="status-grid-container">
+                <span class="text-muted" style="font-size: 0.85rem; grid-column: span 2; text-align: center;"><i class="fa-solid fa-spinner fa-spin"></i> Memuat data...</span>
+            </div>
         </div>
 
         <div class="card">
@@ -99,7 +100,7 @@
             </div>
         </div>
         <div class="pwa-banner-actions">
-            <button id="btn-install-pwa" class="btn btn-primary" style="padding: 6px 12px; font-size: 0.8rem;">Install</button>
+            <button id="btn-install-pwa" class="btn btn-primary" style="padding: 6px 12px; font-size: 0.8rem; width: max-content;">Install</button>
             <button id="btn-close-pwa" style="background:none; border:none; font-size:1.2rem; padding:5px;"><i class="fa-solid fa-xmark"></i></button>
         </div>
     </div>
