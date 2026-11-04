@@ -1,75 +1,158 @@
 :root {
-    --primary: #4f46e5;
-    --primary-hover: #4338ca;
-    --blue: #3b82f6;
-    --blue-hover: #2563eb;
-    --bg-main: #f1f5f9;
+    /* Tema Warna: Emerald & Teal */
+    --primary: #059669; 
+    --primary-hover: #047857;
+    --primary-light: #d1fae5;
+    --bg-main: #f0fdf4; /* Aksen latar teal/mint sangat lembut */
     --surface: #ffffff;
     --text-dark: #0f172a;
-    --text-muted: #64748b;
+    --text-muted: #475569;
     --border: #e2e8f0;
-    --radius: 12px;
+    --radius: 16px; 
 }
 
+/* Reset & Tipografi */
 * { box-sizing: border-box; margin: 0; padding: 0; font-family: 'Poppins', sans-serif; }
 body { background-color: var(--bg-main); color: var(--text-dark); padding-bottom: 40px; }
 
-.topbar { background: var(--surface); padding: 16px 20px; box-shadow: 0 2px 10px rgba(0,0,0,0.05); position: sticky; top: 0; z-index: 100; }
-.brand { display: flex; align-items: center; gap: 12px; }
-.brand img { width: 45px; height: 45px; object-fit: contain; }
-.brand h2 { font-size: 1.1rem; font-weight: 700; color: var(--primary); margin: 0; }
-.brand p { font-size: 0.75rem; color: var(--text-muted); margin: 0; }
+/* Topbar dengan efek Glassmorphism */
+.topbar { 
+    background: rgba(255, 255, 255, 0.85); 
+    backdrop-filter: blur(12px); 
+    -webkit-backdrop-filter: blur(12px);
+    padding: 16px 20px; 
+    border-bottom: 1px solid rgba(226, 232, 240, 0.6);
+    position: sticky; 
+    top: 0; 
+    z-index: 100; 
+    box-shadow: 0 4px 6px -1px rgba(0,0,0,0.02);
+    transition: all 0.3s ease;
+}
+.brand { display: flex; align-items: center; gap: 14px; }
+.brand img { width: 48px; height: 48px; object-fit: contain; filter: drop-shadow(0 2px 4px rgba(0,0,0,0.1)); }
+.brand h2 { font-size: 1.15rem; font-weight: 700; color: var(--primary); margin: 0; letter-spacing: -0.02em; }
+.brand p { font-size: 0.8rem; color: var(--text-muted); margin: 0; font-weight: 500; }
 
-.container { padding: 20px; max-width: 600px; margin: 0 auto; }
+/* Kontainer Utama Mobile-First */
+.container { padding: 24px 20px; max-width: 600px; margin: 0 auto; display: flex; flex-direction: column; gap: 20px; }
 
-.alert { padding: 12px 16px; border-radius: 8px; font-size: 0.85rem; font-weight: 600; margin-bottom: 20px; display: flex; align-items: center; gap: 10px; }
-.alert-info { background: #dbeafe; color: #1e40af; border: 1px solid #bfdbfe; }
-.alert-success { background: #d1fae5; color: #065f46; border: 1px solid #a7f3d0; }
-.alert-danger { background: #fee2e2; color: #991b1b; border: 1px solid #fecaca; }
+/* Kartu Modern */
+.card { 
+    background: var(--surface); 
+    border-radius: var(--radius); 
+    padding: 24px; 
+    box-shadow: 0 10px 25px -5px rgba(0,0,0,0.05), 0 8px 10px -6px rgba(0,0,0,0.01); 
+    border: 1px solid rgba(255,255,255,0.7);
+    transition: transform 0.3s ease, box-shadow 0.3s ease;
+}
+.card:hover {
+    transform: translateY(-2px);
+    box-shadow: 0 20px 25px -5px rgba(0,0,0,0.05), 0 10px 10px -5px rgba(0,0,0,0.02);
+}
 
-.card { background: var(--surface); border-radius: var(--radius); padding: 20px; margin-bottom: 20px; box-shadow: 0 4px 6px -1px rgba(0,0,0,0.05); }
-.card-title { font-size: 1rem; font-weight: 700; border-bottom: 1px solid var(--border); padding-bottom: 10px; margin-bottom: 15px; display: flex; align-items: center; gap: 8px; color: var(--text-dark); }
+.card-title { font-size: 1.05rem; font-weight: 700; border-bottom: 2px solid #f1f5f9; padding-bottom: 12px; margin-bottom: 20px; display: flex; align-items: center; gap: 10px; color: var(--text-dark); }
+.card-title i { color: var(--primary); font-size: 1.2rem; }
 
-.form-group { margin-bottom: 15px; }
-.form-group label { display: block; font-size: 0.85rem; font-weight: 600; margin-bottom: 6px; color: var(--text-muted); }
-.form-control { width: 100%; padding: 12px; border: 1px solid var(--border); border-radius: 8px; font-size: 0.9rem; background: var(--bg-main); outline: none; }
-.form-control:focus { border-color: var(--primary); }
+/* Input & Formulir */
+.form-group { margin-bottom: 18px; }
+.form-group label { display: block; font-size: 0.85rem; font-weight: 600; margin-bottom: 8px; color: var(--text-muted); }
+.form-control { 
+    width: 100%; 
+    padding: 14px 16px; 
+    border: 1px solid #cbd5e1; 
+    border-radius: 12px; 
+    font-size: 0.95rem; 
+    background: #f8fafc; 
+    outline: none; 
+    transition: all 0.2s ease;
+    color: var(--text-dark);
+    font-weight: 500;
+}
+.form-control:focus { 
+    background: #ffffff; 
+    border-color: var(--primary); 
+    box-shadow: 0 0 0 4px rgba(5, 150, 105, 0.15); 
+}
+.form-control:disabled { background: #f1f5f9; cursor: not-allowed; opacity: 0.7; }
 
-.btn { width: 100%; padding: 14px; border-radius: 8px; font-size: 0.95rem; font-weight: 600; border: none; cursor: pointer; display: flex; align-items: center; justify-content: center; gap: 8px; transition: 0.2s; }
-.btn-primary { background: var(--primary); color: white; }
-.btn-primary:hover { background: var(--primary-hover); }
-.btn-primary:disabled { background: #94a3b8; }
-.btn-blue { background: var(--blue); color: white; }
-.btn-blue:hover { background: var(--blue-hover); }
+/* Tombol Transisi Lembut */
+.btn { width: 100%; padding: 14px; border-radius: 12px; font-size: 0.95rem; font-weight: 600; border: none; cursor: pointer; display: flex; align-items: center; justify-content: center; gap: 10px; transition: all 0.2s ease; }
+.btn-primary { background: var(--primary); color: white; box-shadow: 0 4px 6px -1px rgba(5, 150, 105, 0.2); }
+.btn-primary:hover { background: var(--primary-hover); transform: translateY(-2px); box-shadow: 0 6px 12px -2px rgba(5, 150, 105, 0.3); }
+.btn-primary:active { transform: translateY(0); }
+.btn-primary:disabled { background: #94a3b8; box-shadow: none; cursor: not-allowed; transform: none; }
 
-.location-status { background: var(--bg-main); padding: 12px; border-radius: 8px; font-size: 0.85rem; font-weight: 600; text-align: center; margin-bottom: 15px; border: 1px solid var(--border); color: var(--text-muted); }
-.loc-success { background: #d1fae5; color: #065f46; border-color: #a7f3d0; }
-.loc-error { background: #fee2e2; color: #991b1b; border-color: #fecaca; }
+/* Badge Kelas Selesai Absen (Bentuk Pill) */
+.badge-kelas-selesai {
+    background: var(--primary-light);
+    color: var(--primary-hover);
+    padding: 8px 18px;
+    border-radius: 9999px;
+    font-size: 0.85rem;
+    font-weight: 700;
+    border: 1px solid #a7f3d0;
+    display: inline-flex;
+    align-items: center;
+    gap: 8px;
+    box-shadow: 0 2px 4px rgba(0,0,0,0.02);
+    transition: all 0.2s ease;
+}
+.badge-kelas-selesai:hover {
+    transform: translateY(-2px);
+    box-shadow: 0 4px 6px rgba(5, 150, 105, 0.15);
+}
+.badge-kelas-selesai i { font-size: 0.95rem; }
 
-.table-responsive { width: 100%; overflow-x: auto; border: 1px solid var(--border); border-radius: 8px; }
+/* Tabel Responsif */
+.table-responsive { width: 100%; overflow-x: auto; border: 1px solid var(--border); border-radius: 12px; background: var(--surface); }
 table { width: 100%; border-collapse: collapse; text-align: left; }
-table th { background: #f8fafc; font-size: 0.8rem; padding: 10px; border-bottom: 1px solid var(--border); color: var(--text-muted); text-transform: uppercase; }
-table td { padding: 10px; border-bottom: 1px solid var(--border); font-size: 0.85rem; vertical-align: middle; }
+table th { background: #f8fafc; font-size: 0.85rem; padding: 14px; border-bottom: 1px solid var(--border); color: var(--text-muted); text-transform: uppercase; font-weight: 700; }
+table td { padding: 14px; border-bottom: 1px solid var(--border); font-size: 0.9rem; vertical-align: middle; }
+table tr:last-child td { border-bottom: none; }
+
 .text-center { text-align: center; }
 .text-muted { color: var(--text-muted); }
 
-.status-select { width: 100%; padding: 8px; border-radius: 6px; font-weight: 600; font-size: 0.85rem; border: 1px solid var(--border); background: white; outline: none; }
+/* Dropdown Status Modern */
+.status-select { 
+    width: 100%; 
+    padding: 10px 12px; 
+    border-radius: 8px; 
+    font-weight: 600; 
+    font-size: 0.85rem; 
+    border: 1px solid var(--border); 
+    background: #f8fafc; 
+    outline: none; 
+    cursor: pointer;
+    transition: all 0.2s;
+}
+.status-select:focus { border-color: var(--primary); background: #ffffff; box-shadow: 0 0 0 3px rgba(5, 150, 105, 0.1); }
 
-.pwa-banner { position: fixed; bottom: -100px; left: 0; right: 0; background: white; padding: 15px 20px; box-shadow: 0 -4px 15px rgba(0,0,0,0.1); display: flex; justify-content: space-between; align-items: center; transition: 0.4s; z-index: 999; }
+.status-hadir { color: #0f172a !important; font-weight: 700; background-color: #f1f5f9; } 
+.status-sakit { color: #d97706 !important; font-weight: 700; background-color: #fef3c7; border-color: #fde68a; } 
+.status-izin  { color: #0284c7 !important; font-weight: 700; background-color: #e0f2fe; border-color: #bae6fd; } 
+.status-alpa  { color: #dc2626 !important; font-weight: 700; background-color: #fee2e2; border-color: #fecaca; } 
+.status-select option { color: #0f172a; font-weight: normal; background: #ffffff; }
+
+/* PWA Banner */
+.pwa-banner { 
+    position: fixed; 
+    bottom: -120px; 
+    left: 0; right: 0; 
+    background: rgba(255,255,255,0.95); 
+    backdrop-filter: blur(10px); 
+    -webkit-backdrop-filter: blur(10px);
+    padding: 16px 20px; 
+    box-shadow: 0 -4px 20px rgba(0,0,0,0.1); 
+    display: flex; justify-content: space-between; align-items: center; 
+    transition: bottom 0.4s cubic-bezier(0.4, 0, 0.2, 1); 
+    z-index: 999; 
+    border-top-left-radius: 20px; 
+    border-top-right-radius: 20px; 
+}
 .pwa-banner.show { bottom: 0; }
-.pwa-banner-content { display: flex; align-items: center; gap: 12px; }
-.pwa-logo { width: 40px; height: 40px; border-radius: 8px; }
-.pwa-text h4 { margin: 0; font-size: 0.9rem; }
-.pwa-text p { margin: 0; font-size: 0.75rem; color: var(--text-muted); }
-.pwa-banner-actions { display: flex; gap: 10px; align-items: center; }
-
-/* ==========================================
-   WARNA DINAMIS DROPDOWN STATUS ABSENSI
-   ========================================== */
-.status-hadir { color: #0f172a !important; font-weight: 700; } /* Hitam */
-.status-sakit { color: #d97706 !important; font-weight: 700; } /* Oranye / Kuning Gelap */
-.status-izin  { color: #2563eb !important; font-weight: 700; } /* Biru */
-.status-alpa  { color: #dc2626 !important; font-weight: 700; } /* Merah */
-
-/* Agar opsi di dalam dropdown tetap berwarna standar saat dibuka */
-.status-select option { color: #0f172a; font-weight: normal; }
+.pwa-banner-content { display: flex; align-items: center; gap: 14px; }
+.pwa-logo { width: 44px; height: 44px; border-radius: 10px; box-shadow: 0 2px 8px rgba(0,0,0,0.1); }
+.pwa-text h4 { margin: 0; font-size: 0.95rem; font-weight: 700; }
+.pwa-text p { margin: 0; font-size: 0.8rem; color: var(--text-muted); }
+.pwa-banner-actions { display: flex; gap: 12px; align-items: center; }

@@ -146,6 +146,9 @@ async function inisialisasiAplikasiGuru() {
     
     document.getElementById('tanggal').value = `${year}-${month}-${day}`;
 
+    // Panggil fungsi untuk menampilkan kelas yang sudah absen
+    muatInfoAbsensiHariIni(); 
+
     // Lanjutkan mengambil pengaturan dari Google Sheets (Wajib ada API Key)
     fetch(URL_WEB_APP, {
         method: 'POST',
@@ -386,6 +389,9 @@ async function simpanAbsensi() {
                 let infoJarak = STATUS_LOKASI === "ON" ? `<br><br><b>Jarak Anda: ${Math.round(jarakMeter)} m</b>` : '';
                 notifMini('Terkirim!', `Presensi ${kelas} berhasil diserahkan.${infoJarak}`, 'success');
                 
+                // Refresh otomatis daftar kelas yang sudah absen
+                muatInfoAbsensiHariIni(); 
+
                 document.getElementById('kelas').value = "";
                 document.querySelector('#attendance-table tbody').innerHTML = `<tr><td colspan="3" class="text-center text-muted">Silakan pilih kelas terlebih dahulu.</td></tr>`;
                 
@@ -450,4 +456,51 @@ function updateWarnaStatus(selectElement) {
     else if (value === 'Sakit') selectElement.classList.add('status-sakit');
     else if (value === 'Izin') selectElement.classList.add('status-izin');
     else if (value === 'Alpa') selectElement.classList.add('status-alpa');
+}
+
+// ==========================================
+// INFO KELAS YANG SUDAH ABSEN HARI INI
+// ==========================================
+function muatInfoAbsensiHariIni() {
+    const tanggalStr = document.getElementById('tanggal').value;
+    const container = document.getElementById('today-summary-guru');
+    if (!tanggalStr || !container) return;
+    
+    container.innerHTML = '<span class="text-muted" style="font-size: 0.85rem;"><i class="fa-solid fa-spinner fa-spin"></i> Memuat data kelas...</span>';
+    
+    fetch(URL_WEB_APP, {
+        method: 'POST',
+        headers: { 'Content-Type': 'text/plain;charset=utf-8' },
+        body: JSON.stringify({ 
+            action: "get_today_summary", 
+            tanggal: tanggalStr 
+        })
+    })
+    .then(res => res.json())
+    .then(response => {
+        if (response.result === 'success') {
+            const dataSummary = response.data;
+            let html = '';
+            let adaYangSudah = false;
+            
+            // Loop data untuk mencari kelas yang "submitted: true"
+            for (const kelas in dataSummary) {
+                if (dataSummary[kelas].submitted) {
+                    html += `<span class="badge-kelas-selesai"><i class="fa-solid fa-circle-check"></i> ${kelas}</span>`;
+                    adaYangSudah = true;
+                }
+            }
+            
+            if (adaYangSudah) {
+                container.innerHTML = html;
+            } else {
+                container.innerHTML = '<span class="text-muted" style="font-size: 0.85rem; font-style: italic;">Belum ada kelas yang melakukan absensi hari ini.</span>';
+            }
+        } else {
+            container.innerHTML = '<span class="text-muted" style="color:red; font-size: 0.85rem;">Gagal memuat info harian.</span>';
+        }
+    })
+    .catch(err => {
+        container.innerHTML = '<span class="text-muted" style="color:red; font-size: 0.85rem;">Koneksi terputus.</span>';
+    });
 }
